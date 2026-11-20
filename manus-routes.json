@@ -1,6 +1,7 @@
 {
   "routes": [
     { "path": "/", "title": "My Chinsali" },
+    { "path": "/search", "title": "Search the Public Portal" },
     { "path": "/services", "title": "Public Services" },
     { "path": "/community", "title": "My Community" },
     { "path": "/propose", "title": "Propose a Project" },
