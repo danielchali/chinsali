@@ -28,3 +28,4 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+- Resident submissions are insert-only for the public (no public reads) and votes go through the cast_vote DB function; why: protect resident privacy and prevent vote tampering.
