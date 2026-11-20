@@ -12,6 +12,7 @@
 - [x] Service cards expose a description, responsible department, contact, office hours, location and next action.
 - [x] Residents can select a ward/community and see local announcements, active projects, participation prompts and service context.
 - [x] News, notices, events, FAQs and low-connectivity access guidance are visible through dedicated portal sections.
+- [x] Residents can browse an interactive Chinsali photo gallery with heritage, nature, town-life and map filters, image details, keyboard navigation and source credits.
 
 ## Participation and reporting
 

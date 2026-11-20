@@ -12,7 +12,7 @@ The home page includes a lightweight Chinsali image feature using locally stored
 
 ## Main public areas
 
-Home, Public Services, My Community, Propose a Project, Report an Issue, Whistleblowing, Development Tracker, Community Map, Polls & Consultations, News & Notices and Help & Information.
+Home, Public Services, My Community, Propose a Project, Report an Issue, Whistleblowing, Development Tracker, Community Map, Chinsali Photo Gallery, Polls & Consultations, News & Notices and Help & Information.
 
 ## Production follow-up
 
