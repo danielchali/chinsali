@@ -10,4 +10,6 @@ The home-page image feature uses locally stored copies so the static site works 
 
 Gallery descriptions and place names are grounded in the [Chinsali Municipal Council tourism and cultural heritage overview](https://www.chinsalicouncil.gov.zm/?page_id=118), which identifies Lubwa Mission Church, Chipoma Water Falls and heritage linked to Chinsali's political and spiritual history.
 
+The gallery map uses Leaflet with [OpenStreetMap tiles](https://tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png) and displays `© OpenStreetMap contributors` attribution in the map control. Coordinate references and source limitations are documented in [MAP-SOURCES.md](MAP-SOURCES.md), including the [Mindat Lubwa Mission locality](https://www.mindat.org/feature-909723.html), [Mapcarta Chipoma Falls record](https://mapcarta.com/14182890), the [Chinsali Municipal Council overview](https://www.chinsalicouncil.gov.zm/?page_id=118) and [OpenStreetMap tile-use policy](https://operations.osmfoundation.org/policies/tiles/).
+
 The editorial photographs are presented with source links in the site credit line. Replace them with council-owned or explicitly licensed photographs before public production deployment if permission is not confirmed.

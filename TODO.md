@@ -13,6 +13,8 @@
 - [x] Residents can select a ward/community and see local announcements, active projects, participation prompts and service context.
 - [x] News, notices, events, FAQs and low-connectivity access guidance are visible through dedicated portal sections.
 - [x] Residents can browse an interactive Chinsali photo gallery with heritage, nature, town-life and map filters, image details, keyboard navigation and source credits.
+- [x] Residents can open a Leaflet/OpenStreetMap landmark map connected to the gallery, with source-backed public coordinates, visible attribution, marker popups and links to the matching gallery images.
+- [x] Visitors can share an optional-name experience or memory, choose a community and category, consent to browser-local display, and see escaped saved memories with a clear moderation disclaimer.
 
 ## Participation and reporting
 
@@ -33,3 +35,5 @@
 - [ ] Replace demo fallback records with approved council content and production data policies.
 - [ ] Add authenticated staff RBAC, moderation, audit logs and restricted agency intake before operational whistleblowing referrals.
 - [ ] Add contracted SMS/USSD integrations for ONTECH `*388*133#` and SMS workflows.
+- [ ] Replace browser-local visitor memories with a moderated, consent-aware public submission service and retention policy.
+- [ ] Replace public map references with council-verified access points before using the map for navigation, official surveying or emergency response.

@@ -10,9 +10,11 @@ The interface ships with curated civic demo data and browser-local fallback subm
 
 The home page includes a lightweight Chinsali image feature using locally stored town, market and district-map assets. The district map is also adapted into `assets/favicon.webp`; see [ASSET-CREDITS.md](ASSET-CREDITS.md) for attribution and the production-permission follow-up for editorial photographs.
 
+The gallery route includes a Leaflet/OpenStreetMap landmark map with markers for the Chinsali town reference, Lubwa Mission and Chipoma Falls. Marker popups link back to the matching gallery image. The Chinsali New Market photograph is labelled as a town-centre reference because the public geocoder did not return a distinct market pin; coordinate evidence and limitations are recorded in [MAP-SOURCES.md](MAP-SOURCES.md). Visitors can also share an optional-name experience or memory through the browser-local visitor memories form. These memories are not automatically verified council statements and are not sent to a server in this static build.
+
 ## Main public areas
 
-Home, Public Services, My Community, Propose a Project, Report an Issue, Whistleblowing, Development Tracker, Community Map, Chinsali Photo Gallery, Polls & Consultations, News & Notices and Help & Information.
+Home, Public Services, My Community, Propose a Project, Report an Issue, Whistleblowing, Development Tracker, Community Map, Chinsali Photo Gallery with landmark map and visitor memories, Polls & Consultations, News & Notices and Help & Information.
 
 ## Production follow-up
 
