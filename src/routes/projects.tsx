@@ -7,7 +7,7 @@ import { ProjectCard } from "@/components/project-card";
 export const Route = createFileRoute("/projects")({
   head: () => ({
     meta: [
-      { title: "Projects — Chinsali Connect" },
+      { title: "Projects — My Chinsali" },
       { name: "description", content: "Ongoing, completed and planned Chinsali Town Council projects with progress and budgets." },
       { property: "og:title", content: "Chinsali development projects" },
       { property: "og:description", content: "Track progress and budgets of council projects in every ward." },

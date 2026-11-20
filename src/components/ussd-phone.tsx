@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 const screens: Record<string, { text: string; next: Record<string, string> }> = {
-  home: { text: "Chinsali Connect\n1. Report an issue\n2. Suggest a project\n3. Vote in poll\n4. Project updates", next: { "1": "report", "2": "suggest", "3": "poll", "4": "updates" } },
+  home: { text: "My Chinsali\n1. Report an issue\n2. Suggest a project\n3. Vote in poll\n4. Project updates", next: { "1": "report", "2": "suggest", "3": "poll", "4": "updates" } },
   report: { text: "Report issue:\n1. Water\n2. Roads\n3. Sanitation\n4. Safety", next: { "1": "done", "2": "done", "3": "done", "4": "done" } },
   suggest: { text: "Suggest project:\n1. Borehole\n2. Road\n3. Toilets\n4. Other", next: { "1": "done", "2": "done", "3": "done", "4": "done" } },
   poll: { text: "Priority next year?\n1. Boreholes\n2. Feeder roads\n3. Market sanitation\n4. Youth centre", next: { "1": "voted", "2": "voted", "3": "voted", "4": "voted" } },

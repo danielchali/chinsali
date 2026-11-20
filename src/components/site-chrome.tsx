@@ -11,9 +11,9 @@ export function SiteHeader() {
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
         <Link to="/" className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-primary font-display text-lg font-bold text-primary-foreground">C</span>
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-primary font-display text-lg font-bold text-primary-foreground">M</span>
           <span className="leading-tight">
-            <span className="block font-display text-lg font-bold">Chinsali Connect</span>
+            <span className="block font-display text-lg font-bold">My Chinsali</span>
             <span className="block text-xs text-muted-foreground">Chinsali Town Council</span>
           </span>
         </Link>
@@ -34,7 +34,7 @@ export function SiteFooter() {
     <footer className="mt-20 bg-deep text-deep-foreground">
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 sm:grid-cols-3">
         <div>
-          <p className="font-display text-xl font-bold">Chinsali Connect</p>
+          <p className="font-display text-xl font-bold">My Chinsali</p>
           <p className="mt-2 text-sm opacity-80">A Chinsali Town Council platform for open, accountable local development.</p>
         </div>
         <div className="text-sm">

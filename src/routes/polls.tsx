@@ -8,9 +8,9 @@ import { pollsQuery } from "@/lib/civic";
 export const Route = createFileRoute("/polls")({
   head: () => ({
     meta: [
-      { title: "Community polls — Chinsali Connect" },
+      { title: "Community polls — My Chinsali" },
       { name: "description", content: "Vote on which projects Chinsali Town Council should prioritise." },
-      { property: "og:title", content: "Community polls — Chinsali Connect" },
+      { property: "og:title", content: "Community polls — My Chinsali" },
       { property: "og:description", content: "Help decide Chinsali's development priorities." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

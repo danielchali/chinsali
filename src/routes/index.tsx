@@ -7,9 +7,9 @@ import { UssdPhone } from "@/components/ussd-phone";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Chinsali Connect — Your voice in local development" },
+      { title: "My Chinsali — Your voice in local development" },
       { name: "description", content: "Suggest projects, report issues and follow Chinsali Town Council development work — online or via *1234#." },
-      { property: "og:title", content: "Chinsali Connect" },
+      { property: "og:title", content: "My Chinsali" },
       { property: "og:description", content: "Suggest projects, report issues and track development in Chinsali." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

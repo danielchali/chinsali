@@ -7,9 +7,9 @@ import { WARDS, CATEGORIES } from "@/lib/civic";
 export const Route = createFileRoute("/report")({
   head: () => ({
     meta: [
-      { title: "Report an issue or suggest a project — Chinsali Connect" },
+      { title: "Report an issue or suggest a project — My Chinsali" },
       { name: "description", content: "Tell Chinsali Town Council about problems in your area or projects your community needs." },
-      { property: "og:title", content: "Report or suggest — Chinsali Connect" },
+      { property: "og:title", content: "Report or suggest — My Chinsali" },
       { property: "og:description", content: "Report issues, suggest projects or give feedback to the council." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
