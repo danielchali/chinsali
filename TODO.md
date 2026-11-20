@@ -4,7 +4,9 @@
 
 - [x] The app runs directly from `index.html` with plain JavaScript and CSS, without React, TanStack Router, Tailwind, JSX, TypeScript or Vite.
 - [x] The app exposes hash routes covering `/`, `/services`, `/community`, `/propose`, `/report`, `/whistleblowing`, `/tracker`, `/map`, `/polls`, `/news`, `/help`, and `/admin`.
-- [x] The design is responsive, landscape-friendly, low-bandwidth-conscious, keyboard-usable and visually consistent with the approved civic field notes direction.
+- [x] The design is responsive, landscape-friendly, low-bandwidth-conscious, keyboard-usable and visually consistent with the approved Apple civic utility direction.
+- [x] The home page places quick links for local government services directly below the hero, with each link opening the service directory at the selected category.
+- [x] The interface uses a restrained white and graphite system with green as the only accent, soft shadows, larger image crops, consistent inline SVG icons and reduced decorative copy.
 
 ## Public services and information
 
