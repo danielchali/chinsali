@@ -6,6 +6,3 @@ Thumbs.db
 
 # Static build output
 dist/
-
-# Dependencies
-node_modules/
