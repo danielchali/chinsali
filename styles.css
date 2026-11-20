@@ -700,3 +700,80 @@ html[data-theme="dark"] .story-hero-overlay { background: linear-gradient(90deg,
   .search-results { grid-template-columns: 1fr; }
   .search-empty { margin-top: 24px; padding: 32px 18px; }
 }
+
+/* Enterprise visual refinement: compact, quiet, and content-first */
+:root {
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --shadow-small: 0 3px 12px rgba(0, 0, 0, .045);
+  --shadow: 0 12px 30px rgba(0, 0, 0, .075);
+}
+
+body { font-size: 15px; }
+.container { width: min(1200px, calc(100% - 40px)); }
+.button { border-radius: 10px; }
+.section-block { padding-top: 58px; }
+.section-heading h2 { font-size: clamp(1.55rem, 2.4vw, 2.05rem); letter-spacing: -.045em; }
+.page-shell { padding-top: 44px; padding-bottom: 64px; }
+.page-intro { padding-bottom: 24px; }
+.page-intro h1 { max-width: 760px; font-size: clamp(2.15rem, 4vw, 3.35rem); letter-spacing: -.065em; }
+.lede { max-width: 680px; font-size: .9rem; line-height: 1.6; }
+
+/* Keep surfaces useful rather than decorative. */
+.quick-links-grid { gap: 9px; margin-top: 17px; }
+.quick-link-card { min-height: 104px; padding: 13px; border-radius: 12px; box-shadow: var(--shadow-small); }
+.quick-link-card:hover { transform: translateY(-2px); box-shadow: 0 7px 18px rgba(0, 0, 0, .07); }
+.action-grid { gap: 10px; margin-top: 20px; }
+.action-card { min-height: 172px; padding: 16px; border-radius: 12px; box-shadow: var(--shadow-small); }
+.action-card:hover, .project-card:hover, .service-card:hover, .story-card:hover, .search-result-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 0, 0, .065); }
+.project-grid { gap: 11px; margin-top: 20px; }
+.project-card, .service-card { padding: 17px; border-radius: 12px; box-shadow: var(--shadow-small); }
+.project-card h3 { margin-top: 12px; font-size: 1.12rem; }
+.service-card h2 { margin-top: 13px; font-size: 1.18rem; }
+.participation-card, .news-card { min-height: 270px; padding: 23px; border-radius: 12px; box-shadow: var(--shadow-small); }
+.participation-card h2, .news-card h3 { font-size: 1.6rem; }
+
+/* A useful editorial hero, not a billboard. */
+.story-hero { min-height: 560px; }
+.story-hero-content { min-height: 560px; gap: 44px; padding-top: 28px; padding-bottom: 34px; }
+.story-hero h1 { max-width: 620px; margin-top: 14px; font-size: clamp(3rem, 7vw, 5.7rem); letter-spacing: -.08em; line-height: .92; }
+.story-hero-copy-slides { min-height: 136px; margin-top: 16px; }
+.story-hero-copy-slide h2 { font-size: clamp(1.25rem, 2.5vw, 1.85rem); }
+.story-hero-copy-slide p:not(.eyebrow) { font-size: .84rem; line-height: 1.55; }
+.story-hero .hero-actions { margin-top: 20px; }
+.story-hero-actions { max-width: 260px; padding: 16px; border-radius: 14px; box-shadow: 0 12px 28px rgba(0,0,0,.14); }
+.story-quick-action { padding: 10px; border-radius: 9px; }
+.story-hero-scroll { margin-top: 22px; padding-top: 16px; }
+.story-section { padding-top: 58px; }
+.story-grid { gap: 10px; margin-top: 19px; }
+.story-card { border-radius: 12px; box-shadow: var(--shadow-small); }
+.story-card-image { height: 145px; }
+.story-card-copy { min-height: 150px; padding: 13px; }
+.story-card-copy h3 { font-size: .92rem; }
+
+.representative-card { gap: 18px; padding: 20px; border-radius: 12px; box-shadow: var(--shadow-small); }
+.representative-monogram { width: 58px; height: 58px; border-radius: 15px; }
+.representative-copy h2 { font-size: 1.5rem; }
+.channel-banner { margin-top: 58px; margin-bottom: 58px; padding: 22px 25px; border-radius: 12px; }
+
+/* Quiet, consistent form and search surfaces. */
+.civic-form, .search-empty { border-radius: 12px; box-shadow: var(--shadow-small); }
+.search-result-card { padding: 17px; border-radius: 12px; box-shadow: var(--shadow-small); }
+.search-result-card h2 { font-size: 1.16rem; }
+.search-result-card p { min-height: 42px; }
+
+@media (max-width: 760px) {
+  .container { width: min(100% - 30px, 620px); }
+  .section-block { padding-top: 46px; }
+  .page-shell { padding-top: 34px; padding-bottom: 52px; }
+  .page-intro h1 { font-size: 2.35rem; }
+  .story-hero, .story-hero-content { min-height: 620px; }
+  .story-hero-content { gap: 22px; padding-top: 42px; }
+  .story-hero h1 { font-size: clamp(2.9rem, 14vw, 4.35rem); }
+  .story-hero-copy-slides { min-height: 155px; }
+  .story-hero-actions { max-width: 360px; padding: 14px; }
+  .story-card-image { height: 130px; }
+  .story-card-copy { min-height: 162px; }
+  .participation-card, .news-card { min-height: auto; padding: 19px; }
+}
