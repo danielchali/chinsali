@@ -7,7 +7,7 @@
     { "path": "/propose", "title": "Propose a Project" },
     { "path": "/report", "title": "Report an Issue" },
     { "path": "/whistleblowing", "title": "Sensitive Reporting" },
-    { "path": "/tracker", "title": "Development Tracker" },
+    { "path": "/tracker", "title": "Projects" },
     { "path": "/map", "title": "Community Map" },
     { "path": "/gallery", "title": "Photo Gallery" },
     { "path": "/polls", "title": "Polls & Consultations" },
