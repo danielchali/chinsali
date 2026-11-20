@@ -8,6 +8,8 @@ This repository is intentionally dependency-free. The site is plain HTML, CSS an
 
 The interface ships with curated civic demo data and browser-local fallback submissions so every public flow can be explored offline. Replace the demo records and connect approved production endpoints when the council is ready for deployment.
 
+The home page includes a lightweight Chinsali image feature using locally stored town, market and district-map assets. The district map is also adapted into `assets/favicon.webp`; see [ASSET-CREDITS.md](ASSET-CREDITS.md) for attribution and the production-permission follow-up for editorial photographs.
+
 ## Main public areas
 
 Home, Public Services, My Community, Propose a Project, Report an Issue, Whistleblowing, Development Tracker, Community Map, Polls & Consultations, News & Notices and Help & Information.
