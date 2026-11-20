@@ -1,0 +1,4 @@
+- [ ] Secure authorized-staff access without profiles.
+- [ ] Resident submissions review and project updates.
+- [ ] Replace USSD references with ONTECH *388*133#.
+- [ ] Verify staff access, privacy, project updates, and sign-out.
