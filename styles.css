@@ -24,14 +24,16 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { min-width: 320px; margin: 0; background: var(--bg); color: var(--ink); }
+body { min-width: 320px; min-height: 100vh; margin: 0; background: var(--bg); color: var(--ink); }
 body.modal-open { overflow: hidden; }
+#app { min-height: 100vh; }
+#app > main { min-height: calc(100vh - 101px); }
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: wait; opacity: .68; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(31, 107, 70, .28); outline-offset: 3px; }
-.container { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
+.container { width: min(1440px, calc(100% - 64px)); margin: 0 auto; }
 .icon { display: inline-grid; place-items: center; flex: none; width: 1.05em; height: 1.05em; line-height: 1; }
 .icon svg { display: block; width: 100%; height: 100%; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; fill: none; }
 .eyebrow { margin: 0; color: var(--green); font-size: .68rem; font-weight: 750; letter-spacing: .12em; line-height: 1.35; text-transform: uppercase; }
@@ -499,7 +501,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 @media (max-width: 760px) {
-  .container { width: min(100% - 30px, 600px); }
+  .container { width: calc(100% - 30px); }
   .utility-inner { min-height: 29px; font-size: .5rem; }
   .utility-inner > span:first-child { max-width: 170px; line-height: 1.25; }
   .utility-right { gap: 5px; }.utility-separator { display: none; }
@@ -636,3 +638,548 @@ html[data-theme="dark"] .story-hero-overlay { background: linear-gradient(90deg,
   .community-feedback-form { padding: 0; border: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .story-hero-slide { animation: none; opacity: 0; } .story-hero-slide:first-child { opacity: 1; } }
+
+/* Enterprise UI refinement */
+:root {
+  --bg: #f7f8f7;
+  --surface: #ffffff;
+  --surface-muted: #fafbfa;
+  --ink: #202522;
+  --ink-soft: #667069;
+  --ink-faint: #87908a;
+  --line: #e4e8e5;
+  --line-strong: #d5dbd7;
+  --shadow-small: 0 6px 18px rgba(31, 43, 36, .055);
+  --shadow: 0 14px 34px rgba(31, 43, 36, .09);
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 18px;
+}
+
+body {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  width: min(1280px, calc(100% - 64px));
+}
+
+.utility-bar {
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+
+.header-inner {
+  min-height: 64px;
+  gap: 20px;
+}
+
+.brand {
+  min-width: 190px;
+}
+
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+}
+
+.main-nav a,
+.nav-more,
+.header-help {
+  padding: 8px 9px;
+  font-size: 12px;
+}
+
+.button {
+  min-height: 38px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.button-large,
+.header-cta {
+  min-height: 40px;
+  padding: 10px 16px;
+}
+
+.page-shell {
+  min-height: calc(100vh - 96px);
+  padding-top: 44px;
+  padding-bottom: 64px;
+}
+
+.page-intro {
+  padding-bottom: 24px;
+}
+
+.page-intro h1 {
+  max-width: 760px;
+  margin-top: 7px;
+  font-size: clamp(38px, 4vw, 48px);
+  line-height: 1.04;
+  letter-spacing: -.055em;
+}
+
+.lede {
+  max-width: 620px;
+  margin-top: 12px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.section-block,
+.story-section,
+.landmark-map-section,
+.visitor-memories {
+  padding-top: 56px;
+}
+
+.section-heading h2,
+.community-feedback-copy h2,
+.participation-card h2,
+.news-card h3,
+.channel-banner h2 {
+  letter-spacing: -.045em;
+  line-height: 1.12;
+}
+
+.section-heading h2 {
+  font-size: 30px;
+}
+
+.section-lede {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.quick-links-section {
+  padding-top: 24px;
+}
+
+.quick-links-grid {
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.quick-link-card {
+  min-height: 108px;
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(31, 43, 36, .035);
+}
+
+.quick-link-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-small);
+}
+
+.stat-strip {
+  margin-top: 22px;
+  border-radius: 12px;
+}
+
+.stat-card {
+  min-height: 70px;
+  padding: 14px 16px;
+}
+
+.stat-number {
+  font-size: 22px;
+}
+
+.action-grid,
+.project-grid,
+.service-grid {
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.action-card {
+  min-height: 168px;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(31, 43, 36, .035);
+}
+
+.action-card:hover,
+.project-card:hover,
+.service-card:hover,
+.story-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-small);
+}
+
+.action-card::before {
+  height: 2px;
+}
+
+.action-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+}
+
+.action-title {
+  font-size: 16px;
+}
+
+.action-copy {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.project-card {
+  min-height: 252px;
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.project-card h3 {
+  margin-top: 13px;
+  font-size: 18px;
+}
+
+.project-card p {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.participation-card,
+.news-card,
+.channel-banner,
+.community-hero,
+.community-pulse,
+.featured-news,
+.civic-form,
+.poll-card,
+.side-card,
+.privacy-panel {
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(31, 43, 36, .035);
+}
+
+.participation-card,
+.news-card {
+  min-height: 280px;
+  padding: 22px;
+}
+
+.participation-card h2,
+.news-card h3 {
+  font-size: 26px;
+}
+
+.channel-banner {
+  margin-top: 56px;
+  margin-bottom: 56px;
+  padding: 22px 24px;
+}
+
+.channel-banner h2 {
+  font-size: 26px;
+}
+
+.service-card {
+  padding: 18px;
+  border-radius: 12px;
+}
+
+.service-card h2 {
+  font-size: 20px;
+}
+
+.service-card > p {
+  min-height: 56px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.civic-form {
+  padding: 22px;
+}
+
+.kind-card {
+  min-height: 112px;
+  border-radius: 10px;
+}
+
+.story-hero,
+.story-hero-content {
+  min-height: 560px;
+}
+
+.story-hero-content {
+  justify-content: center;
+  padding-top: 44px;
+  padding-bottom: 36px;
+}
+
+.story-hero h1 {
+  max-width: 640px;
+  margin-top: 14px;
+  font-size: clamp(56px, 7vw, 76px);
+  line-height: .92;
+  letter-spacing: -.07em;
+}
+
+.story-hero-politics {
+  margin-top: 14px;
+  font-size: 22px;
+  letter-spacing: -.03em;
+}
+
+.story-hero-lede {
+  max-width: 520px;
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.story-hero .hero-actions {
+  margin-top: 22px;
+}
+
+.story-hero-scroll {
+  padding-top: 44px;
+  font-size: 10px;
+}
+
+.story-grid {
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.story-card {
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(31, 43, 36, .035);
+}
+
+.story-card-image {
+  height: 150px;
+}
+
+.story-card-copy {
+  min-height: 164px;
+  padding: 14px;
+}
+
+.story-card-copy h3 {
+  font-size: 15px;
+}
+
+.story-card-copy p {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.representative-card,
+.gallery-card,
+.memory-list,
+.memory-notice,
+.map-legend,
+.district-map {
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(31, 43, 36, .035);
+}
+
+.representative-card {
+  padding: 20px;
+}
+
+.representative-copy h2 {
+  font-size: 26px;
+}
+
+.representative-copy > p:not(.eyebrow):not(.representative-role) {
+  font-size: 13px;
+}
+
+.footer-grid {
+  font-size: 13px;
+}
+
+.site-footer {
+  padding-top: 38px;
+}
+
+@media (max-width: 1050px) {
+  .container {
+    width: calc(100% - 48px);
+  }
+}
+
+@media (max-width: 760px) {
+  .container {
+    width: calc(100% - 30px);
+  }
+
+  .header-inner {
+    min-height: 60px;
+  }
+
+  .page-shell {
+    padding-top: 34px;
+    padding-bottom: 52px;
+  }
+
+  .page-intro h1 {
+    max-width: 100%;
+    font-size: 34px;
+  }
+
+  .lede {
+    font-size: 14px;
+  }
+
+  .section-block,
+  .story-section,
+  .landmark-map-section,
+  .visitor-memories {
+    padding-top: 44px;
+  }
+
+  .section-heading h2 {
+    font-size: 26px;
+  }
+
+  .story-hero,
+  .story-hero-content {
+    min-height: 520px;
+  }
+
+  .story-hero-content {
+    padding-top: 40px;
+  }
+
+  .story-hero h1 {
+    max-width: 390px;
+    font-size: clamp(46px, 14vw, 58px);
+  }
+
+  .story-hero-politics {
+    font-size: 19px;
+  }
+
+  .story-hero-lede {
+    max-width: 430px;
+  }
+
+  .story-hero-scroll {
+    padding-top: 34px;
+  }
+
+  .story-card-image {
+    height: 136px;
+  }
+
+  .story-card-copy {
+    min-height: 170px;
+  }
+
+  .action-card,
+  .project-card,
+  .service-card {
+    min-height: 0;
+  }
+
+  .participation-card h2,
+  .news-card h3,
+  .channel-banner h2 {
+    font-size: 24px;
+  }
+}
+
+/* Consistent full-width application shell */
+.page-shell {
+  min-height: calc(100vh - 101px);
+}
+
+.narrow-shell {
+  max-width: none;
+}
+
+.page-intro {
+  margin-bottom: 4px;
+  padding-bottom: 28px;
+}
+
+.page-intro h1 {
+  max-width: 980px;
+}
+
+.section-block,
+.story-section,
+.landmark-map-section,
+.visitor-memories {
+  scroll-margin-top: 110px;
+}
+
+.site-footer {
+  margin-top: 0;
+}
+
+@media (min-width: 761px) {
+  .container {
+    width: calc(100% - 64px);
+  }
+
+  .page-shell {
+    padding-top: 56px;
+    padding-bottom: 72px;
+  }
+
+  .page-intro h1 {
+    font-size: clamp(3.2rem, 4.6vw, 4.8rem);
+  }
+
+  .section-block {
+    padding-top: 72px;
+  }
+
+  .channel-banner {
+    margin-bottom: 72px;
+  }
+
+  .community-columns,
+  .news-layout,
+  .help-grid {
+    column-gap: 40px;
+  }
+
+  .civic-form,
+  .community-feedback,
+  .privacy-panel,
+  .tracker-result,
+  .poll-card,
+  .side-card,
+  .service-card,
+  .project-card,
+  .action-card {
+    border-radius: var(--radius);
+  }
+}
+
+@media (min-width: 1200px) {
+  .container {
+    width: calc(100% - 96px);
+  }
+
+  .service-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .action-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .project-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .map-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
