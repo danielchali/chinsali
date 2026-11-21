@@ -123,7 +123,8 @@ function renderHeader() {
     const primary = [{ route: "/services", label: "Services" }, { route: "/tracker", label: "Projects" }, { route: "/map", label: "Map" }, { route: "/news", label: "News" }, { route: "/gallery", label: "Gallery" }, { route: "/help", label: "Help" }, ];
     const participation = [{ route: "/propose", label: "Propose a project" }, { route: "/polls", label: "Polls & consultations" }, { route: "/report", label: "Report an issue" }, { route: "/whistleblowing", label: "Whistleblowing" }];
     const navLinks = `${primary.map((item) => link(item.route, item.label, state.route === item.route ? "active" : "")).join("")}${navDropdown("Participate", participation)}`;
-    return `<header class="site-header"><div class="container header-inner"><a href="#/" class="brand" data-route="/"><span class="brand-mark">M</span><span><strong>My Chinsali</strong><small>Your voice in local development</small></span></a><form class="header-search" id="global-search-form" role="search"><span class="header-search-icon">${icon("search")}</span><input id="global-search" name="query" value="${esc(state.searchQuery)}" placeholder="Search pages and content" aria-label="Search pages and content" autocomplete="off" /><button type="submit" aria-label="Submit search">↵</button></form><nav class="main-nav" aria-label="Primary navigation">${navLinks}</nav><div class="header-actions"><button type="button" class="theme-toggle" data-action="toggle-theme" aria-label="Switch colour theme">${state.theme === "dark" ? "☀" : "◐"}<span>${state.theme === "dark" ? "Light" : "Dark"}</span></button>${link("/report", "Report an issue", "button button-primary header-cta")}</div><button class="mobile-menu" type="button" data-action="toggle-mobile" aria-label="${state.mobileOpen ? "Close menu" : "Open menu"}" aria-expanded="${state.mobileOpen}">${icon(state.mobileOpen ? "close" : "menu")}</button></div>${state.mobileOpen ? `<nav class="mobile-nav container" aria-label="Expanded mobile navigation">${navLinks}<div class="mobile-nav-divider"></div>${link("/report", "Report an issue", "button button-primary")}</nav>` : ""}</header>`;
+    const mobileNavigation = state.mobileOpen ? `<div class="mobile-nav-overlay" role="dialog" aria-modal="true" aria-label="Site navigation"><button class="mobile-nav-backdrop" type="button" data-action="close-mobile" aria-label="Close navigation"></button><nav id="mobile-navigation" class="mobile-nav" aria-label="Expanded mobile navigation"><div class="mobile-nav-header"><a href="#/" class="brand" data-route="/"><span class="brand-mark">M</span><span><strong>My Chinsali</strong><small>Your voice in local development</small></span></a><button class="mobile-nav-close" type="button" data-action="close-mobile" aria-label="Close navigation">${icon("close")}</button></div>${navLinks}<div class="mobile-nav-divider"></div>${link("/report", "Report an issue", "button button-primary")}</nav></div>` : "";
+    return `<header class="site-header"><div class="container header-inner"><a href="#/" class="brand" data-route="/"><span class="brand-mark">M</span><span><strong>My Chinsali</strong><small>Your voice in local development</small></span></a><form class="header-search" id="global-search-form" role="search"><span class="header-search-icon">${icon("search")}</span><input id="global-search" name="query" value="${esc(state.searchQuery)}" placeholder="Search pages and content" aria-label="Search pages and content" autocomplete="off" /><button type="submit" aria-label="Submit search">↵</button></form><nav class="main-nav" aria-label="Primary navigation">${navLinks}</nav><div class="header-actions"><button type="button" class="theme-toggle" data-action="toggle-theme" aria-label="Switch colour theme">${state.theme === "dark" ? "☀" : "◐"}<span>${state.theme === "dark" ? "Light" : "Dark"}</span></button>${link("/report", "Report an issue", "button button-primary header-cta")}</div><button class="mobile-menu" type="button" data-action="toggle-mobile" aria-label="${state.mobileOpen ? "Close menu" : "Open menu"}" aria-expanded="${state.mobileOpen}" aria-controls="mobile-navigation">${icon(state.mobileOpen ? "close" : "menu")}</button></div></header>${mobileNavigation}`;
 }
 function renderFooter() { return `<footer class="site-footer"><div class="container footer-grid"><div><a class="brand footer-brand" href="/" data-route="/"><span class="brand-mark">M</span><span><strong>My Chinsali</strong><small>Public participation platform</small></span></a><p class="footer-copy">A practical public record for residents, communities and the institutions serving Chinsali District.</p></div><div><p class="footer-heading">Take part</p>${link("/report", "Report an issue")} ${link("/propose", "Propose a project")} ${link("/polls", "Vote in a consultation")}</div><div><p class="footer-heading">Need a basic phone?</p><p class="footer-copy">Use ONTECH <strong>*388*133#</strong> when the USSD service is available, or ask at the Civic Centre help desk.</p></div><div><p class="footer-heading">Safety & privacy</p>${link("/whistleblowing", "Confidential reporting")} ${link("/help", "Help and FAQs")}</div></div><div class="container footer-bottom"><span>© 2026 My Chinsali · Chinsali Town Council</span><span><a href="ASSET-CREDITS.md">Image credits</a> · verify official notices before acting</span></div></footer>`; }
 function renderQuickLinks() {
@@ -250,7 +251,7 @@ function renderPage() { switch (state.route) {
     default: return renderHome();
 } }
 function render() { const app = document.querySelector("#app"); if (!app)
-    return; document.documentElement.dataset.theme = state.theme; landmarkMap?.remove(); landmarkMap = null; document.title = `${state.route === "/" ? "My Chinsali" : `${state.route.slice(1).replaceAll("-", " ")} · My Chinsali`}`; app.innerHTML = `${renderHeader()}${renderPage()}${renderFooter()}${state.toastTimer ? "" : ""}`; initLandmarkMap(); if (state.modalService)
+    return; document.documentElement.dataset.theme = state.theme; document.body.classList.toggle("mobile-menu-open", state.mobileOpen); landmarkMap?.remove(); landmarkMap = null; document.title = `${state.route === "/" ? "My Chinsali" : `${state.route.slice(1).replaceAll("-", " ")} · My Chinsali`}`; app.innerHTML = `${renderHeader()}${renderPage()}${renderFooter()}${state.toastTimer ? "" : ""}`; initLandmarkMap(); if (state.modalService)
     document.body.classList.add("modal-open");
 else
     document.body.classList.remove("modal-open"); }
@@ -353,6 +354,12 @@ function handleClick(event) { const target = event.target.closest("[data-route],
     case "toggle-mobile":
         state.mobileOpen = !state.mobileOpen;
         render();
+        document.querySelector(state.mobileOpen ? ".mobile-nav-close" : ".mobile-menu")?.focus();
+        break;
+    case "close-mobile":
+        state.mobileOpen = false;
+        render();
+        document.querySelector(".mobile-menu")?.focus();
         break;
     case "open-more": {
         const menu = document.querySelector("#more-menu");
@@ -458,7 +465,41 @@ function handleClick(event) { const target = event.target.closest("[data-route],
         break;
 } }
 document.addEventListener("click", handleClick);
-document.addEventListener("keydown", (event) => { if (state.galleryIndex === null) return; if (event.key === "Escape") { state.galleryIndex = null; render(); } if (event.key === "ArrowRight") { state.galleryIndex = (state.galleryIndex + 1) % galleryItems.length; render(); } if (event.key === "ArrowLeft") { state.galleryIndex = (state.galleryIndex - 1 + galleryItems.length) % galleryItems.length; render(); } });
+document.addEventListener("keydown", (event) => {
+    if (state.mobileOpen && event.key === "Escape") {
+        state.mobileOpen = false;
+        render();
+        document.querySelector(".mobile-menu")?.focus();
+        return;
+    }
+    if (state.mobileOpen && event.key === "Tab") {
+        const focusable = [...document.querySelectorAll(".mobile-nav a[href], .mobile-nav button, .mobile-nav summary")].filter((element) => element.getClientRects().length > 0);
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last?.focus();
+        }
+        else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+        }
+    }
+    if (state.galleryIndex === null)
+        return;
+    if (event.key === "Escape") {
+        state.galleryIndex = null;
+        render();
+    }
+    if (event.key === "ArrowRight") {
+        state.galleryIndex = (state.galleryIndex + 1) % galleryItems.length;
+        render();
+    }
+    if (event.key === "ArrowLeft") {
+        state.galleryIndex = (state.galleryIndex - 1 + galleryItems.length) % galleryItems.length;
+        render();
+    }
+});
 document.addEventListener("submit", (event) => { event.preventDefault(); const form = event.target; if (form.id === "global-search-form" || form.id === "search-page-form") {
     state.searchQuery = readForm(form, "query");
     navigate("/search");
