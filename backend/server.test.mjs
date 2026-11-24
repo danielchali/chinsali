@@ -24,6 +24,7 @@ test("health reports configuration without exposing private data", async (t) => 
     status: "ok",
     submissions: false,
     voting: false,
+    ussd: false,
   });
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
@@ -147,6 +148,69 @@ test("rate limits write requests", async (t) => {
   assert.equal((await post()).status, 503);
   const limited = await post();
   assert.equal(limited.status, 429);
+});
+
+test("USSD callback accepts a report flow and never stores the caller's phone number", async (t) => {
+  const saved = [];
+  const baseUrl = await withServer(t, {
+    submissionsStore: { save: async (record) => saved.push(record) },
+  });
+  const callback = async (text) => fetch(`${baseUrl}/api/ussd`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      sessionId: "AT-session-unique-001",
+      serviceCode: "*388*133#",
+      phoneNumber: "+260971234567",
+      text,
+    }),
+  });
+
+  const steps = [
+    ["", /^CON Welcome to My Chinsali/],
+    ["1", /^CON Choose an issue:/],
+    ["1*2", /^CON Choose your ward:/],
+    ["1*2*2", /^CON Enter a nearby landmark/],
+    ["1*2*2*Mwika market", /^CON Briefly describe the issue/],
+  ];
+  for (const [text, pattern] of steps) {
+    const response = await callback(text);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /text\/plain/);
+    assert.match(await response.text(), pattern);
+  }
+
+  const finalResponse = await callback("1*2*2*Mwika market*Road damaged near the clinic");
+  const finalText = await finalResponse.text();
+  assert.match(finalText, /^END Report received\. Reference: MC-[A-F0-9]{20}\.$/);
+  assert.equal(saved.length, 1);
+  assert.deepEqual(saved[0].submission, {
+    kind: "issue",
+    title: "",
+    details: "Location: Mwika market. Road damaged near the clinic",
+    ward: "Mwika",
+    category: "Roads and potholes",
+    phone: "",
+    contact: "",
+    anonymous: true,
+    channel: "ussd",
+  });
+  assert.doesNotMatch(JSON.stringify(saved[0]), /AT-session-unique-001|260971234567/);
+});
+
+test("USSD endpoint rejects the wrong service code and limits repeated sessions", async (t) => {
+  const baseUrl = await withServer(t, { rateLimit: 1 });
+  const callback = (sessionId, serviceCode) => fetch(`${baseUrl}/api/ussd`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sessionId, serviceCode, text: "" }),
+  });
+
+  const invalidCode = await callback("AT-session-code-001", "*999#");
+  assert.equal(await invalidCode.text(), "END This service code is not recognized.");
+  assert.equal((await callback("AT-session-throttle-01", "*388*133#")).status, 200);
+  const throttled = await callback("AT-session-throttle-01", "*388*133#");
+  assert.equal(await throttled.text(), "END Too many requests. Please try again later.");
 });
 
 test("encrypted records contain no plaintext resident information", async (t) => {

@@ -9,6 +9,10 @@ const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const MAX_BODY_BYTES = 16 * 1024;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 const RATE_LIMIT = 12;
+const USSD_SESSION_TTL_MS = 5 * 60 * 1000;
+const MAX_USSD_SESSIONS = 5000;
+const USSD_CATEGORIES = ["Water problems", "Roads and potholes", "Waste management", "Streetlights", "Other concern"];
+const USSD_WARDS = ["Chinsali Central", "Mwika", "Lubwa", "Mulilansolo", "Kabanda", "Other"];
 
 const MIME_TYPES = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -39,12 +43,8 @@ function sendJson(response, status, value) {
   response.end(JSON.stringify(value));
 }
 
-async function readJson(request) {
+async function readBody(request) {
   const contentType = request.headers["content-type"]?.split(";", 1)[0].trim().toLowerCase();
-  if (contentType !== "application/json") {
-    throw new HttpError(415, "Send the request as JSON.");
-  }
-
   const chunks = [];
   let bytes = 0;
   for await (const chunk of request) {
@@ -54,9 +54,12 @@ async function readJson(request) {
     }
     chunks.push(chunk);
   }
+  return { contentType, body: Buffer.concat(chunks).toString("utf8") };
+}
 
+function parseJsonObject(body) {
   try {
-    const value = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const value = JSON.parse(body);
     if (!value || Array.isArray(value) || typeof value !== "object") {
       throw new Error("Expected an object.");
     }
@@ -64,6 +67,23 @@ async function readJson(request) {
   } catch {
     throw new HttpError(400, "The request body must be a JSON object.");
   }
+}
+
+async function readJson(request) {
+  const { contentType, body } = await readBody(request);
+  if (contentType !== "application/json") {
+    throw new HttpError(415, "Send the request as JSON.");
+  }
+  return parseJsonObject(body);
+}
+
+async function readUssdPayload(request) {
+  const { contentType, body } = await readBody(request);
+  if (contentType === "application/json") return parseJsonObject(body);
+  if (contentType === "application/x-www-form-urlencoded") {
+    return Object.fromEntries(new URLSearchParams(body));
+  }
+  throw new HttpError(415, "Send USSD requests as form data or JSON.");
 }
 
 function boundedText(value, field, maxLength, { required = false, minLength = 1 } = {}) {
@@ -106,6 +126,11 @@ function createRateLimiter({ limit = RATE_LIMIT, windowMs = RATE_WINDOW_MS, now 
   const requests = new Map();
   return (key) => {
     const currentTime = now();
+    for (const [requestKey, timestamps] of requests) {
+      const active = timestamps.filter((timestamp) => currentTime - timestamp < windowMs);
+      if (active.length) requests.set(requestKey, active);
+      else requests.delete(requestKey);
+    }
     const recent = (requests.get(key) ?? []).filter((timestamp) => currentTime - timestamp < windowMs);
     if (recent.length >= limit) {
       requests.set(key, recent);
@@ -210,9 +235,147 @@ function makeCastVote(voteConfig, fetchImpl) {
   };
 }
 
+function ussdReply(response, message) {
+  response.writeHead(200, {
+    "Cache-Control": "no-store",
+    "Content-Type": "text/plain; charset=utf-8",
+    "X-Content-Type-Options": "nosniff",
+  });
+  response.end(message);
+}
+
+function ussdCategoryMenu(message = "") {
+  return `CON ${message ? `${message}\n` : ""}Choose an issue:\n${USSD_CATEGORIES.map((item, index) => `${index + 1}. ${item}`).join("\n")}`;
+}
+
+function ussdWardMenu(message = "") {
+  return `CON ${message ? `${message}\n` : ""}Choose your ward:\n${USSD_WARDS.map((item, index) => `${index + 1}. ${item}`).join("\n")}`;
+}
+
+function normalizeServiceCode(value) {
+  return value.trim().replace(/#$/, "");
+}
+
+async function handleUssd(payload, {
+  sessions,
+  submissionsStore,
+  serviceCode,
+  now,
+}) {
+  const sessionId = boundedText(payload.sessionId, "sessionId", 160, { required: true });
+  const suppliedCode = boundedText(payload.serviceCode, "serviceCode", 80, { required: true });
+  if (normalizeServiceCode(suppliedCode) !== normalizeServiceCode(serviceCode)) {
+    return "END This service code is not recognized.";
+  }
+
+  const text = boundedText(payload.text ?? "", "text", 2000);
+  const input = text.split("*").at(-1)?.trim() ?? "";
+  const currentTime = now();
+  for (const [id, session] of sessions) {
+    if (session.expiresAt <= currentTime) sessions.delete(id);
+  }
+
+  let session = sessions.get(sessionId);
+  if (!session) {
+    if (sessions.size >= MAX_USSD_SESSIONS) return "END The service is busy. Please try again later.";
+    session = { step: "menu", expiresAt: currentTime + USSD_SESSION_TTL_MS };
+  }
+  session.expiresAt = currentTime + USSD_SESSION_TTL_MS;
+
+  if (input === "0") {
+    sessions.delete(sessionId);
+    return "END Thank you for using My Chinsali.";
+  }
+
+  if (session.step === "menu") {
+    if (!input) {
+      sessions.set(sessionId, session);
+      return "CON Welcome to My Chinsali\n1. Report an issue\n2. Find a public service\n3. Project updates\n0. Exit";
+    }
+    if (input === "1") {
+      session.step = "category";
+      sessions.set(sessionId, session);
+      return ussdCategoryMenu();
+    }
+    sessions.delete(sessionId);
+    if (input === "2") return "END Visit the My Chinsali service directory or ask at the Civic Centre for current service contacts.";
+    if (input === "3") return "END Project updates are available in the My Chinsali development tracker. Reference lookup is not available by USSD yet.";
+    return "END Invalid option. Please dial the service code again.";
+  }
+
+  if (session.step === "category") {
+    const category = USSD_CATEGORIES[Number(input) - 1];
+    if (!category) {
+      sessions.set(sessionId, session);
+      return ussdCategoryMenu("Invalid option.");
+    }
+    session.category = category;
+    session.step = "ward";
+    sessions.set(sessionId, session);
+    return ussdWardMenu();
+  }
+
+  if (session.step === "ward") {
+    const ward = USSD_WARDS[Number(input) - 1];
+    if (!ward) {
+      sessions.set(sessionId, session);
+      return ussdWardMenu("Invalid option.");
+    }
+    session.ward = ward;
+    session.step = "location";
+    sessions.set(sessionId, session);
+    return "CON Enter a nearby landmark or location (2-100 characters):";
+  }
+
+  if (session.step === "location") {
+    if (input.length < 2 || input.length > 100) {
+      sessions.set(sessionId, session);
+      return "CON Location must be 2-100 characters. Enter a nearby landmark or location:";
+    }
+    session.location = input;
+    session.step = "details";
+    sessions.set(sessionId, session);
+    return "CON Briefly describe the issue (10-400 characters):";
+  }
+
+  if (session.step === "details") {
+    if (input.length < 10 || input.length > 400) {
+      sessions.set(sessionId, session);
+      return "CON Description must be 10-400 characters. Briefly describe the issue:";
+    }
+    if (!submissionsStore) {
+      sessions.delete(sessionId);
+      return "END Issue reporting is temporarily unavailable. Please try again later.";
+    }
+
+    const reference = `MC-${randomBytes(10).toString("hex").toUpperCase()}`;
+    await submissionsStore.save({
+      reference,
+      receivedAt: new Date(currentTime).toISOString(),
+      submission: {
+        kind: "issue",
+        title: "",
+        details: `Location: ${session.location}. ${input}`,
+        ward: session.ward,
+        category: session.category,
+        phone: "",
+        contact: "",
+        anonymous: true,
+        channel: "ussd",
+      },
+    });
+    sessions.delete(sessionId);
+    return `END Report received. Reference: ${reference}.`;
+  }
+
+  sessions.delete(sessionId);
+  return "END This session has expired. Please dial the service code again.";
+}
+
 export function createAppServer({
   submissionsStore = null,
   voteConfig = {},
+  ussdServiceCode = "*388*133#",
   fetchImpl = globalThis.fetch,
   webRoot = ROOT,
   rateLimit = RATE_LIMIT,
@@ -221,6 +384,8 @@ export function createAppServer({
 } = {}) {
   const allowWrite = createRateLimiter({ limit: rateLimit, windowMs: rateWindowMs, now });
   const castVote = makeCastVote(voteConfig, fetchImpl);
+  const ussdSessions = new Map();
+  const clock = now ?? Date.now;
 
   return createHttpServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://localhost");
@@ -230,7 +395,37 @@ export function createAppServer({
           sendJson(response, 405, { error: "Method not allowed." });
           return;
         }
-        sendJson(response, 200, { status: "ok", submissions: Boolean(submissionsStore), voting: Boolean(voteConfig.url && voteConfig.anonKey) });
+        sendJson(response, 200, { status: "ok", submissions: Boolean(submissionsStore), voting: Boolean(voteConfig.url && voteConfig.anonKey), ussd: Boolean(submissionsStore) });
+        return;
+      }
+
+      if (url.pathname === "/api/ussd") {
+        if (request.method !== "POST") {
+          ussdReply(response, "END This endpoint accepts POST requests only.");
+          return;
+        }
+        try {
+          const input = await readUssdPayload(request);
+          const sessionId = boundedText(input.sessionId, "sessionId", 160, { required: true });
+          if (!allowWrite(`ussd:${sessionId}`)) {
+            ussdReply(response, "END Too many requests. Please try again later.");
+            return;
+          }
+          const result = await handleUssd(input, {
+            sessions: ussdSessions,
+            submissionsStore,
+            serviceCode: ussdServiceCode,
+            now: clock,
+          });
+          ussdReply(response, result);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            ussdReply(response, `END ${error.message}`);
+            return;
+          }
+          console.error("USSD request failed.");
+          ussdReply(response, "END The service is temporarily unavailable. Please try again later.");
+        }
         return;
       }
 
@@ -300,6 +495,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       pollParam: process.env.CAST_VOTE_POLL_PARAM,
       optionParam: process.env.CAST_VOTE_OPTION_PARAM,
     },
+    ussdServiceCode: process.env.USSD_SERVICE_CODE ?? "*388*133#",
   });
   server.listen(port, "127.0.0.1", () => {
     console.log(`My Chinsali backend listening at http://127.0.0.1:${port}`);
