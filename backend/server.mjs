@@ -489,6 +489,7 @@ async function handleUssd(payload, {
 export function createAppServer({
   submissionsStore = null,
   contentStore = null,
+  adminUsername = "admin",
   adminPassword = "",
   secureAdminCookie = false,
   voteConfig = {},
@@ -559,11 +560,14 @@ export function createAppServer({
             throw new HttpError(503, "Staff sign-in is not configured. Set ADMIN_PASSWORD to a strong password of at least 12 characters.");
           }
           const input = await readJson(request);
+          const username = boundedText(input.username, "username", 64, { required: true });
           if (typeof input.password !== "string" || input.password.length < 12 || input.password.length > 256) {
             throw new HttpError(400, "password must be 12-256 characters.");
           }
           const password = input.password;
-          if (!passwordMatches(password, adminPassword)) throw new HttpError(401, "The password was not accepted.");
+          if (!passwordMatches(username, adminUsername) || !passwordMatches(password, adminPassword)) {
+            throw new HttpError(401, "The username or password was not accepted.");
+          }
           const token = randomBytes(32).toString("base64url");
           adminSessions.set(token, clock() + ADMIN_SESSION_TTL_MS);
           response.setHeader("Set-Cookie", adminCookie(token, ADMIN_SESSION_TTL_MS / 1000));
@@ -779,6 +783,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const server = createAppServer({
     submissionsStore,
     contentStore: new LocalContentStore(resolve(ROOT, "backend/data/content.json")),
+    adminUsername: process.env.ADMIN_USERNAME ?? "admin",
     adminPassword: process.env.ADMIN_PASSWORD ?? "",
     secureAdminCookie: process.env.ADMIN_COOKIE_SECURE === "1",
     voteConfig: {

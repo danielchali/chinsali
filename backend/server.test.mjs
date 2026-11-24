@@ -22,6 +22,7 @@ async function withContentServer(t) {
   t.after(() => rm(directory, { recursive: true, force: true }));
   return withServer(t, {
     contentStore: new LocalContentStore(join(directory, "content.json")),
+    adminUsername: "staff",
     adminPassword: "correct-horse-battery",
   });
 }
@@ -157,10 +158,17 @@ test("staff content management is authenticated and published content is the onl
   const emptyPublicContent = await fetch(`${baseUrl}/api/content/public`);
   assert.deepEqual(await emptyPublicContent.json(), { news: [], gallery: [] });
 
+  const wrongUsername = await fetch(`${baseUrl}/api/admin/session`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: baseUrl },
+    body: JSON.stringify({ username: "someone-else", password: "correct-horse-battery" }),
+  });
+  assert.equal(wrongUsername.status, 401);
+
   const login = await fetch(`${baseUrl}/api/admin/session`, {
     method: "POST",
     headers: { "content-type": "application/json", origin: baseUrl },
-    body: JSON.stringify({ password: "correct-horse-battery" }),
+    body: JSON.stringify({ username: "staff", password: "correct-horse-battery" }),
   });
   assert.equal(login.status, 200);
   const cookie = login.headers.get("set-cookie").split(";", 1)[0];
@@ -237,7 +245,7 @@ test("staff content writes require a same-origin request and image uploads rejec
   const login = await fetch(`${baseUrl}/api/admin/session`, {
     method: "POST",
     headers: { "content-type": "application/json", origin: baseUrl },
-    body: JSON.stringify({ password: "correct-horse-battery" }),
+    body: JSON.stringify({ username: "staff", password: "correct-horse-battery" }),
   });
   const cookie = login.headers.get("set-cookie").split(";", 1)[0];
   const crossOrigin = await fetch(`${baseUrl}/api/admin/content/news`, {
@@ -261,7 +269,7 @@ test("staff sign-in stays disabled without an explicit server password", async (
   const login = await fetch(`${baseUrl}/api/admin/session`, {
     method: "POST",
     headers: { "content-type": "application/json", origin: baseUrl },
-    body: JSON.stringify({ password: "a-strong-password-for-testing" }),
+    body: JSON.stringify({ username: "staff", password: "a-strong-password-for-testing" }),
   });
   assert.equal(login.status, 503);
   assert.equal((await login.json()).error.includes("ADMIN_PASSWORD"), true);

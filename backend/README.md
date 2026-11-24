@@ -8,6 +8,7 @@ Use Node.js 18 or newer. Generate a 32-byte encryption key and keep it in your s
 
 ```powershell
 $env:SUBMISSION_ENCRYPTION_KEY = node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('base64'))"
+$env:ADMIN_USERNAME = Read-Host "Set local staff username"
 $env:ADMIN_PASSWORD = Read-Host "Set local staff password"
 npm --prefix backend start
 ```
@@ -18,7 +19,7 @@ Online voting is optional. Configure the Supabase project URL and public anon ke
 
 ## Local staff publishing workspace
 
-Set `ADMIN_PASSWORD` to a unique password of at least 12 characters in the same shell before starting the server. Staff sign in at `/login`; authenticated users are redirected to the protected `/admin` workspace for editorial dashboards, news creation/editing, photo uploads, gallery publishing and poll drafts. `ADMIN_COOKIE_SECURE=1` enables the Secure cookie flag when running behind HTTPS. The backend still binds to loopback; these settings do not make it production-ready.
+Set `ADMIN_USERNAME` and a unique `ADMIN_PASSWORD` of at least 12 characters in the same shell before starting the server. If omitted, the local username defaults to `admin`. Staff sign in at `/login`; authenticated users are redirected to the protected `/admin` workspace for editorial dashboards, news creation/editing, photo uploads, gallery publishing and poll drafts. `ADMIN_COOKIE_SECURE=1` enables the Secure cookie flag when running behind HTTPS. The backend still binds to loopback; these settings do not make it production-ready.
 
 Editorial content is stored in the Git-ignored `backend/data/content.json`; uploaded images are stored under `backend/data/uploads/`. The public site receives only published news and gallery entries through `GET /api/content/public`. Draft images are not served publicly. Image uploads are limited to JPEG, PNG and WebP files up to 5 MB.
 
@@ -34,7 +35,7 @@ npm --prefix backend test
 
 - `GET /api/health` reports whether encrypted submissions and online voting are configured.
 - `GET /api/content/public` returns published news and gallery entries only.
-- `GET|POST|DELETE /api/admin/session` checks, creates and ends the local staff session. `ADMIN_PASSWORD` is required for sign-in.
+- `GET|POST|DELETE /api/admin/session` checks, creates and ends the local staff session. Sign-in requires the configured username and `ADMIN_PASSWORD`.
 - Authenticated staff routes: `GET /api/admin/overview`, `GET|POST /api/admin/content/{news,gallery,polls}`, `PUT|DELETE /api/admin/content/{news,gallery,polls}/{id}`, and `POST /api/admin/uploads`.
 - `GET /api/media/{filename}` serves uploaded images only after they are attached to published news/gallery content (or to an authenticated staff session).
 - `POST /api/submissions` accepts issue, feedback, service and proposal submissions, encrypts them with AES-256-GCM at rest, and returns a reference. Anonymous submissions discard phone numbers. This endpoint is insert-only; submission records and references cannot be read back through a public API.
