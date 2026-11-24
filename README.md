@@ -8,6 +8,12 @@ This repository is intentionally dependency-free. The site is plain HTML, CSS an
 
 The interface ships with curated civic demo data and browser-local fallback submissions so every public flow can be explored offline. Replace the demo records and connect approved production endpoints when the council is ready for deployment.
 
+## Local backend
+
+A dependency-free Node API is available for local development. It serves the portal and accepts encrypted, insert-only resident reports, feedback and proposals. Start it with Node 18 or newer; setup, environment variables and API details are in [backend/README.md](backend/README.md). Opening `index.html` directly still uses browser-local fallback submissions.
+
+The backend is a local-development foundation, not a production deployment: public submission reads, staff review, retention controls, public vote-result reads and operational whistleblowing are intentionally not implemented. Votes submitted through its API call the existing Supabase `cast_vote` function; no Lovable-managed database schema or migration is changed.
+
 The home page includes a lightweight Chinsali image feature using locally stored town, market and district-map assets. The district map is also adapted into `assets/favicon.webp`; see [ASSET-CREDITS.md](ASSET-CREDITS.md) for attribution and the production-permission follow-up for editorial photographs.
 
 The gallery route includes a Leaflet/OpenStreetMap landmark map with markers for the Chinsali town reference, Lubwa Mission and Chipoma Falls. Marker popups link back to the matching gallery image. The Chinsali New Market photograph is labelled as a town-centre reference because the public geocoder did not return a distinct market pin; coordinate evidence and limitations are recorded in [MAP-SOURCES.md](MAP-SOURCES.md). Visitors can also share an optional-name experience or memory through the browser-local visitor memories form. These memories are not automatically verified council statements and are not sent to a server in this static build.

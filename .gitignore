@@ -6,3 +6,6 @@ Thumbs.db
 
 # Static build output
 dist/
+
+# Local encrypted backend submissions
+backend/data/

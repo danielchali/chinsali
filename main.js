@@ -259,7 +259,39 @@ function showToast(message, tone = "success") { const existing = document.queryS
     window.clearTimeout(state.toastTimer); state.toastTimer = window.setTimeout(() => toast.remove(), 4200); }
 function navigate(route) { const next = normalizeRoute(route); state.route = next; state.mobileOpen = false; state.modalService = null; window.history.pushState({}, "", `#${next}`); render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
 function cycleWard() { const index = WARDS.indexOf(state.ward); state.ward = WARDS[(index + 1) % WARDS.length] ?? WARDS[0]; localStorage.setItem("my-chinsali-ward", state.ward); render(); showToast(`Community view changed to ${state.ward}.`); }
-function submitPublicRecord(payload) { const ref = randomRef(payload.kind === "proposal" ? "PROP" : "MC"); const records = getStored("my-chinsali-references", {}); records[ref] = { title: String(payload.title ?? payload.category ?? "Community submission"), status: "Received · awaiting review", kind: String(payload.kind ?? "report") }; setStored("my-chinsali-references", records); return { ok: true, ref }; }
+async function submitPublicRecord(payload) {
+    const saveLocally = () => {
+        const ref = randomRef(payload.kind === "proposal" ? "PROP" : "MC");
+        const records = getStored("my-chinsali-references", {});
+        records[ref] = { title: String(payload.title ?? payload.category ?? "Community submission"), status: "Saved in this browser · backend unavailable", kind: String(payload.kind ?? "report") };
+        setStored("my-chinsali-references", records);
+        return { ok: true, ref, local: true };
+    };
+    let response;
+    try {
+        response = await fetch("/api/submissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    }
+    catch (error) {
+        if (!(error instanceof TypeError))
+            throw error;
+        return saveLocally();
+    }
+    if ([404, 501].includes(response.status) && !response.headers.get("content-type")?.includes("application/json")) {
+        return saveLocally();
+    }
+    let result;
+    try {
+        result = await response.json();
+    }
+    catch {
+        throw new Error("The backend returned an invalid response.");
+    }
+    if (!response.ok)
+        throw new Error(result.error ?? "The submission could not be saved.");
+    if (typeof result.reference !== "string")
+        throw new Error("The backend returned an invalid submission reference.");
+    return { ok: true, ref: result.reference, local: false };
+}
 async function handleSubmit(form) { const formId = form.id; const submitButton = form.querySelector("button[type=submit]"); if (submitButton) {
     submitButton.disabled = true;
     submitButton.dataset.original = submitButton.innerHTML;
@@ -270,7 +302,7 @@ async function handleSubmit(form) { const formId = form.id; const submitButton =
         if (details.length < 5)
             throw new Error("Please add a few more details so the team can act.");
         const response = await submitPublicRecord({ kind: state.selectedReportKind, details: `${readForm(form, "location")} — ${details}`, ward: readForm(form, "ward"), category: readForm(form, "category"), phone: readForm(form, "anonymous") ? "" : readForm(form, "phone") });
-        form.innerHTML = `<div class="success-state"><span class="success-mark">${icon("check")}</span><p class="eyebrow">REFERENCE CREATED</p><h2>Thank you for speaking up.</h2><p>Your message has been recorded. Keep this reference number if you want to check for an update.</p><strong class="reference-number">${response.ref}</strong><div class="success-actions">${link("/tracker", "Track this reference", "button button-primary")} ${button("Send another", "reset-report", "button button-secondary")}</div><p class="small-note">If you provided a phone number, follow-up depends on the connected notification service.</p></div>`;
+        form.innerHTML = `<div class="success-state"><span class="success-mark">${icon("check")}</span><p class="eyebrow">REFERENCE CREATED</p><h2>Thank you for speaking up.</h2><p>${response.local ? "The backend is unavailable, so this reference is saved only in this browser." : "Your report was received by the local backend. Public status lookup is not enabled yet."}</p><strong class="reference-number">${esc(response.ref)}</strong><div class="success-actions">${response.local ? link("/tracker", "View local reference", "button button-primary") : ""} ${button("Send another", "reset-report", "button button-secondary")}</div>${response.local ? "" : '<p class="small-note">Keep this reference for future follow-up. No public submission details are exposed.</p>'}</div>`;
         showToast(`Your reference is ${response.ref}.`);
     }
     else if (formId === "proposal-form") {
@@ -278,7 +310,7 @@ async function handleSubmit(form) { const formId = form.id; const submitButton =
         if (title.length < 5)
             throw new Error("Give your proposal a clear title.");
         const response = await submitPublicRecord({ kind: "proposal", title, details: `${readForm(form, "need")} Solution: ${readForm(form, "solution")}`, ward: readForm(form, "ward"), category: readForm(form, "category"), phone: "" });
-        form.innerHTML = `<div class="success-state"><span class="success-mark">${icon("check")}</span><p class="eyebrow">PROPOSAL ON THE RECORD</p><h2>${esc(title)}</h2><p>Your community idea has a reference. Share it with neighbours and use the tracker to watch for an assessment update.</p><strong class="reference-number">${response.ref}</strong><div class="success-actions">${link("/tracker", "Open development tracker", "button button-primary")} ${button("Submit another idea", "reset-proposal", "button button-secondary")}</div></div>`;
+        form.innerHTML = `<div class="success-state"><span class="success-mark">${icon("check")}</span><p class="eyebrow">${response.local ? "LOCAL PROPOSAL REFERENCE" : "PROPOSAL RECEIVED"}</p><h2>${esc(title)}</h2><p>${response.local ? "The backend is unavailable, so this reference is saved only in this browser." : "Your proposal was received by the local backend. Staff review and public status lookup are not connected yet."}</p><strong class="reference-number">${esc(response.ref)}</strong><div class="success-actions">${response.local ? link("/tracker", "View local reference", "button button-primary") : ""} ${button("Submit another idea", "reset-proposal", "button button-secondary")}</div></div>`;
         showToast(`Proposal ${response.ref} received.`);
     }
     else if (formId === "whistle-form") {
@@ -294,7 +326,7 @@ async function handleSubmit(form) { const formId = form.id; const submitButton =
         if (details.length < 10)
             throw new Error("Please add a little more detail so the feedback is useful.");
         const response = await submitPublicRecord({ kind: "community-feedback", title: readForm(form, "kind"), details: `${readForm(form, "location")} — ${details}`, ward: readForm(form, "ward"), contact: readForm(form, "contact") });
-        form.innerHTML = `<div class="success-state"><span class="success-mark">${icon("check")}</span><p class="eyebrow">FEEDBACK RECEIVED</p><h2>Thank you for helping Chinsali improve.</h2><p>Your message has a local reference number. Keep it if you want to check the next connected response flow.</p><strong class="reference-number">${response.ref}</strong><div class="success-actions">${link("/community", "Back to community", "button button-primary")} ${button("Send another", "reset-community-feedback", "button button-secondary")}</div></div>`;
+        form.innerHTML = `<div class="success-state"><span class="success-mark">${icon("check")}</span><p class="eyebrow">FEEDBACK RECEIVED</p><h2>Thank you for helping Chinsali improve.</h2><p>${response.local ? "The backend is unavailable, so this reference is saved only in this browser." : "Your feedback was received by the local backend. Public status lookup is not enabled yet."}</p><strong class="reference-number">${esc(response.ref)}</strong><div class="success-actions">${link("/community", "Back to community", "button button-primary")} ${button("Send another", "reset-community-feedback", "button button-secondary")}</div></div>`;
         showToast(`Feedback ${response.ref} received.`);
     }
     else if (formId === "memory-form") {
