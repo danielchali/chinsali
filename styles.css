@@ -1597,14 +1597,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 body.login-route #app { display: grid; place-items: center; padding: 24px; }
 body.login-route #app > main { width: 100%; min-height: 0; }
 .admin-login-page { display: grid; place-items: center; width: min(100%, 530px); margin: 0 auto; }
-.admin-login-card { display: grid; width: 100%; gap: 12px; margin: 0; padding: 28px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-small); }
+.admin-login-card { display: grid; width: 100%; gap: 15px; margin: 0; padding: 30px; border: 1px solid var(--line); border-top: 3px solid var(--green); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow); }
 .admin-login-card .admin-gate-mark { margin-bottom: 2px; }
 .admin-login-card > .eyebrow { margin: 0; color: var(--green); }
 .admin-login-card h1 { margin: 0; font-size: 1.8rem; letter-spacing: -.05em; }
 .admin-login-form { display: grid; gap: 13px; margin-top: 5px; }
 .admin-login-form .button { width: 100%; }
 .admin-home-link { width: 100%; }
-.admin-login-card .small-note { margin: 0; }
+.admin-login-card .small-note { margin: 0; padding-top: 13px; border-top: 1px solid var(--line); line-height: 1.5; }
 .admin-gate { grid-template-columns: 51px minmax(0, 1fr); }
 .admin-gate .admin-form { grid-template-columns: minmax(0, 420px) auto; }
 .admin-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0; }
