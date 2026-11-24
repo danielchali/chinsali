@@ -12,7 +12,7 @@ The interface ships with curated civic demo data and browser-local fallback subm
 
 A dependency-free Node API is available for local development. It serves the portal and accepts encrypted, insert-only resident reports, feedback and proposals. Start it with Node 18 or newer; setup, environment variables and API details are in [backend/README.md](backend/README.md). Opening `index.html` directly still uses browser-local fallback submissions.
 
-The backend is a local-development foundation, not a production deployment: public submission reads, staff review, retention controls, public vote-result reads and operational whistleblowing are intentionally not implemented. Votes submitted through its API call the existing Supabase `cast_vote` function; no Lovable-managed database schema or migration is changed.
+The backend is a local-development foundation, not a production deployment: public submission reads, staff review of resident records, retention controls, public vote-result reads and operational whistleblowing are intentionally not implemented. Staff sign in at `/login` to reach a separate single-password editorial workspace at `/admin`, which manages local news, gallery images and poll drafts without providing production accounts or role-based access. Votes submitted through the API call the existing Supabase `cast_vote` function; no Lovable-managed database schema or migration is changed.
 
 The home page includes a lightweight Chinsali image feature using locally stored town, market and district-map assets. The district map is also adapted into `assets/favicon.webp`; see [ASSET-CREDITS.md](ASSET-CREDITS.md) for attribution and the production-permission follow-up for editorial photographs.
 
@@ -20,7 +20,7 @@ The gallery route includes a Leaflet/OpenStreetMap landmark map with markers for
 
 ## Main public areas
 
-Home, Public Services, My Community, Propose a Project, Report an Issue, Whistleblowing, Development Tracker, Community Map, Chinsali Photo Gallery with landmark map and visitor memories, Polls & Consultations, News & Notices and Help & Information.
+Home, Public Services, My Community, Propose a Project, Report an Issue, Whistleblowing, Development Tracker, Community Map, Chinsali Photo Gallery with landmark map and visitor memories, Polls & Consultations, News & Notices, Help & Information and the local staff publishing workspace.
 
 ## Production follow-up
 

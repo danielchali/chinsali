@@ -90,10 +90,10 @@ const demoMemories = [
 function currentRoute() { return window.location.hash.startsWith("#/") ? normalizeRoute(window.location.hash.slice(1)) : normalizeRoute(window.location.pathname); }
 const initialRoute = currentRoute();
 let landmarkMap = null;
-const state = { route: initialRoute, theme: localStorage.getItem("my-chinsali-theme") || "light", ward: localStorage.getItem("my-chinsali-ward") ?? "Chinsali Central", serviceQuery: "", serviceCategory: "All", projectFilter: "all", mapFilter: "all", galleryFilter: "all", galleryIndex: null, mobileOpen: false, selectedReportKind: "issue", modalService: null, searchQuery: "", toastTimer: null, data: { projects: demoProjects, polls: demoPolls, live: false } };
+const state = { route: initialRoute, theme: localStorage.getItem("my-chinsali-theme") || "light", ward: localStorage.getItem("my-chinsali-ward") ?? "Chinsali Central", serviceQuery: "", serviceCategory: "All", projectFilter: "all", mapFilter: "all", galleryFilter: "all", galleryIndex: null, mobileOpen: false, selectedReportKind: "issue", modalService: null, searchQuery: "", toastTimer: null, data: { projects: demoProjects, polls: demoPolls, live: false, content: { news: [], gallery: [] }, votedPolls: {} }, admin: { authenticated: false, loading: false, collection: "news", items: { news: [], gallery: [], polls: [] }, overview: null, editing: null, error: "" } };
 function normalizeRoute(path) {
     const route = path.replace(/\/$/, "") || "/";
-    return ["/", "/search", "/services", "/community", "/propose", "/report", "/whistleblowing", "/tracker", "/map", "/gallery", "/polls", "/news", "/help", "/admin"].includes(route) ? route : "/";
+    return ["/", "/search", "/services", "/community", "/propose", "/report", "/whistleblowing", "/tracker", "/map", "/gallery", "/polls", "/news", "/help", "/admin", "/login"].includes(route) ? route : "/";
 }
 function esc(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character); }
 function formatKwacha(value) { return value == null ? "Budget pending" : `K${value.toLocaleString("en-ZM")}`; }
@@ -126,7 +126,7 @@ function renderHeader() {
     const mobileNavigation = state.mobileOpen ? `<div class="mobile-nav-overlay" role="dialog" aria-modal="true" aria-label="Site navigation"><button class="mobile-nav-backdrop" type="button" data-action="close-mobile" aria-label="Close navigation"></button><nav id="mobile-navigation" class="mobile-nav" aria-label="Expanded mobile navigation"><div class="mobile-nav-header"><a href="#/" class="brand" data-route="/"><span class="brand-mark">M</span><span><strong>My Chinsali</strong><small>Your voice in local development</small></span></a><button class="mobile-nav-close" type="button" data-action="close-mobile" aria-label="Close navigation">${icon("close")}</button></div>${navLinks}<div class="mobile-nav-divider"></div>${link("/report", "Report an issue", "button button-primary")}</nav></div>` : "";
     return `<header class="site-header"><div class="container header-inner"><a href="#/" class="brand" data-route="/"><span class="brand-mark">M</span><span><strong>My Chinsali</strong><small>Your voice in local development</small></span></a><form class="header-search" id="global-search-form" role="search"><span class="header-search-icon">${icon("search")}</span><input id="global-search" name="query" value="${esc(state.searchQuery)}" placeholder="Search pages and content" aria-label="Search pages and content" autocomplete="off" /><button type="submit" aria-label="Submit search">↵</button></form><nav class="main-nav" aria-label="Primary navigation">${navLinks}</nav><div class="header-actions"><button type="button" class="theme-toggle" data-action="toggle-theme" aria-label="Switch colour theme">${state.theme === "dark" ? "☀" : "◐"}<span>${state.theme === "dark" ? "Light" : "Dark"}</span></button>${link("/report", "Report an issue", "button button-primary header-cta")}</div><button class="mobile-menu" type="button" data-action="toggle-mobile" aria-label="${state.mobileOpen ? "Close menu" : "Open menu"}" aria-expanded="${state.mobileOpen}" aria-controls="mobile-navigation">${icon(state.mobileOpen ? "close" : "menu")}</button></div></header>${mobileNavigation}`;
 }
-function renderFooter() { return `<footer class="site-footer"><div class="container footer-grid"><div><a class="brand footer-brand" href="/" data-route="/"><span class="brand-mark">M</span><span><strong>My Chinsali</strong><small>Public participation platform</small></span></a><p class="footer-copy">A practical public record for residents, communities and the institutions serving Chinsali District.</p></div><div><p class="footer-heading">Take part</p>${link("/report", "Report an issue")} ${link("/propose", "Propose a project")} ${link("/polls", "Vote in a consultation")}</div><div><p class="footer-heading">Need a basic phone?</p><p class="footer-copy">Use ONTECH <strong>*388*133#</strong> when the USSD service is available, or ask at the Civic Centre help desk.</p></div><div><p class="footer-heading">Safety & privacy</p>${link("/whistleblowing", "Confidential reporting")} ${link("/help", "Help and FAQs")}</div></div><div class="container footer-bottom"><span>© 2026 My Chinsali · Chinsali Town Council</span><span><a href="ASSET-CREDITS.md">Image credits</a> · verify official notices before acting</span></div></footer>`; }
+function renderFooter() { return `<footer class="site-footer"><div class="container footer-grid"><div><a class="brand footer-brand" href="/" data-route="/"><span class="brand-mark">M</span><span><strong>My Chinsali</strong><small>Public participation platform</small></span></a><p class="footer-copy">A practical public record for residents, communities and the institutions serving Chinsali District.</p></div><div><p class="footer-heading">Take part</p>${link("/report", "Report an issue")} ${link("/propose", "Propose a project")} ${link("/polls", "Vote in a consultation")}</div><div><p class="footer-heading">Need a basic phone?</p><p class="footer-copy">Use ONTECH <strong>*388*133#</strong> when the USSD service is available, or ask at the Civic Centre help desk.</p></div><div><p class="footer-heading">Safety & privacy</p>${link("/whistleblowing", "Confidential reporting")} ${link("/help", "Help and FAQs")} ${link("/login", "Staff sign in")}</div></div><div class="container footer-bottom"><span>© 2026 My Chinsali · Chinsali Town Council</span><span><a href="ASSET-CREDITS.md">Image credits</a> · verify official notices before acting</span></div></footer>`; }
 function renderQuickLinks() {
     const quickServices = services.slice(0, 6);
     return `<section class="container quick-links-section" aria-labelledby="quick-links-title"><div class="section-heading compact"><div><p class="eyebrow">LOCAL GOVERNMENT SERVICES</p><h2 id="quick-links-title">Start with the right desk.</h2></div>${link("/services", "View all services →", "text-button")}</div><div class="quick-links-grid">${quickServices.map((service) => `<a class="quick-link-card" href="#/services" data-route="/services" data-category="${esc(service.category)}"><span class="quick-link-icon">${icon(service.icon)}</span><strong>${esc(service.title)}</strong><small>${esc(service.category)} <span>→</span></small></a>`).join("")}</div></section>`;
@@ -195,18 +195,40 @@ function renderPropose() { return `<main class="container page-shell narrow-shel
 function renderWhistleblowing() { return `<main class="container page-shell narrow-shell">${pageIntro("RESTRICTED CHANNEL / SENSITIVE REPORTING", "A separate door for serious allegations.", "Use this channel for suspected corruption, abuse of public office, fraud, trafficking or other serious misconduct. Do not use it for a pothole or a routine service request.", "")}<div class="privacy-panel"><div class="privacy-panel-icon">${icon("lock")}</div><div><p class="eyebrow">BEFORE YOU SUBMIT</p><h2>This channel requires formal safeguards.</h2><p>This interface is a front-end concept. Operational referrals to DEC, Zambia Police or ACC require formal agency arrangements, restricted access, encryption, retention controls and protected follow-up before launch.</p><div class="privacy-points"><span>${icon("check")} Separate case reference</span><span>${icon("check")} Restricted review</span><span>${icon("check")} No public display</span></div></div></div><form class="civic-form" id="whistle-form"><div class="form-grid">${formSelect("category", "Allegation category", ["Suspected corruption or bribery", "Abuse of public office", "Misuse of public resources", "Theft or fraud", "Human trafficking or exploitation", "Organised criminal activity", "Other serious misconduct"])}${formSelect("followup", "Follow-up preference", ["Remain fully anonymous", "Confidential follow-up by phone", "Confidential follow-up by email"])}<label class="field field-full"><span>What would you like to report?</span><textarea name="details" rows="7" required placeholder="Describe what happened, when and where. Avoid naming people unless it is necessary to identify the allegation."></textarea></label><label class="field"><span>Contact detail <small>optional</small></span><input name="contact" placeholder="Phone or email for protected follow-up" /></label><label class="field"><span>Evidence attachment <small>optional</small></span><input type="file" name="attachment" /></label></div><div class="form-actions"><button class="button button-dark button-large" type="submit">Create confidential reference <span>→</span></button><span class="form-note">For immediate danger, contact Zambia Police or emergency services.</span></div></form></main>`; }
 function renderTracker() { const localRefs = getStored("my-chinsali-references", {}); return `<main class="container page-shell">${pageIntro("PROJECTS / PUBLIC PROGRESS", "Follow the trail, not just the headline.", "Search a report or proposal reference to see the latest known status. Official projects are published with budgets, milestones and progress updates.", "")}<form class="tracker-search" id="tracker-form"><label class="search-box">${icon("tracker")}<input name="reference" placeholder="Enter a reference, e.g. MC-4821" autocomplete="off" /><button class="button button-primary" type="submit">Check status</button></label></form><div id="tracker-result"></div><section class="tracker-section"><div class="section-heading compact"><div><p class="eyebrow">OFFICIAL PROJECTS</p><h2>Development in motion</h2></div><div class="filter-row compact-filters">${["all", "ongoing", "completed", "proposed"].map((filter) => button(filter, "project-filter", `filter-chip ${state.projectFilter === filter ? "selected" : ""}`, `data-filter="${filter}"`)).join("")}</div></div><div class="project-grid tracker-grid">${state.data.projects.filter((project) => state.projectFilter === "all" || project.status === state.projectFilter).map(projectCard).join("")}</div></section><section class="lifecycle"><p class="eyebrow">PUBLIC PROJECT LIFECYCLE</p><div class="lifecycle-row">${["Proposed", "Assessment", "Prioritised", "Approved", "Budgeted", "Implementation", "Completed"].map((step, index) => `<div class="lifecycle-step ${index < 2 ? "past" : ""}"><span>${String(index + 1).padStart(2, "0")}</span><strong>${step}</strong></div>`).join("")}</div><p class="small-note">The public record distinguishes community support and official approval. A proposal can be visible before it becomes a funded project.</p></section></main>`; }
 function renderMap() { const filteredPoints = state.mapFilter === "all" ? mapPoints : mapPoints.filter((point) => point.type === state.mapFilter); return `<main class="container page-shell">${pageIntro("COMMUNITY MAP / DISTRICT VIEW", "See the district as a living public record.", "Explore where work is happening, where facilities are located and where community concerns have been reported. Pins are approximate in this prototype.", link("/tracker", "View project tracker →", "text-button"))}<div class="map-toolbar"><div class="filter-row">${["all", "project", "facility", "issue"].map((filter) => button(filter === "all" ? "Everything" : filter === "project" ? "Projects" : filter === "facility" ? "Public facilities" : "Reported issues", "map-filter", `filter-chip ${state.mapFilter === filter ? "selected" : ""}`, `data-filter="${filter}"`)).join("")}</div><span class="map-note">${filteredPoints.length} markers · approximate presentation data</span></div><div class="map-layout"><div class="district-map"><div class="map-compass">N<br><span>↑</span></div><div class="map-road road-a"></div><div class="map-road road-b"></div><div class="map-road road-c"></div><div class="map-river-large"></div><div class="map-district-label label-1">CHINSALI<br><small>CENTRAL</small></div><div class="map-district-label label-2">MWIKA</div><div class="map-district-label label-3">LUBWA</div><div class="map-district-label label-4">KABANDA</div>${filteredPoints.map((point) => `<button type="button" class="map-marker marker-${point.type}" style="left:${point.x}%;top:${point.y}%" data-action="map-marker" data-title="${esc(point.title)}" data-status="${esc(point.status)}" aria-label="${esc(point.title)}">${point.type === "project" ? "◆" : point.type === "facility" ? "+" : "!"}</button>`).join("")}<div class="map-scale">Approximate public map view</div></div><aside class="map-legend"><p class="eyebrow">MAP KEY</p><div><span class="legend-dot legend-project"></span><span>Development project</span></div><div><span class="legend-dot legend-facility"></span><span>School / health / amenity</span></div><div><span class="legend-dot legend-issue"></span><span>Reported community issue</span></div><hr><p class="eyebrow">VISIBLE HERE</p><p class="small-note">${filteredPoints.length} public markers in this view. Precise addresses and sensitive reports are not displayed.</p><div id="map-selection" class="map-selection"><span class="small-note">Select a marker to inspect it.</span></div></aside></div></main>`; }
-function pollCard(poll) { const voted = getStored("my-chinsali-votes", {}); const total = poll.poll_options.reduce((sum, option) => sum + option.votes, 0); return `<article class="poll-card"><div class="poll-card-head"><span class="eyebrow">ACTIVE CONSULTATION</span><span class="poll-closes">${esc(poll.closes)}</span></div><h2>${esc(poll.question)}</h2><p class="poll-helper">Choose one response. Results update after you vote.</p><div class="poll-options">${poll.poll_options.map((option, index) => { const percentage = total ? Math.round(option.votes / total * 100) : 0; return voted[poll.id] ? `<div class="poll-result"><div class="poll-result-label"><span>${index + 1}. ${esc(option.label)}</span><strong>${percentage}%</strong></div><div class="poll-track"><span style="width:${percentage}%"></span></div></div>` : `<button type="button" class="poll-option" data-action="vote" data-poll="${esc(poll.id)}" data-option="${esc(option.id)}"><span>${index + 1}</span>${esc(option.label)}<strong>→</strong></button>`; }).join("")}</div><div class="poll-footer"><span>${total.toLocaleString()} responses so far</span>${voted[poll.id] ? "<span class=\"voted-badge\">✓ Your response is recorded</span>" : ""}</div></article>`; }
-function renderPolls() { return `<main class="container page-shell narrow-shell">${pageIntro("POLLS & CONSULTATIONS / HAVE YOUR SAY", "Your opinion belongs in the record.", "Community priorities help shape conversations and planning. They do not replace formal assessment or official project approval.", link("/community", "See community context →", "text-button"))}<div class="consultation-note"><span>${icon("poll")}</span><div><strong>One browser, one response per consultation.</strong><p>For feature-phone access, ask about the current ONTECH USSD channel at your ward office.</p></div></div><div class="poll-stack">${state.data.polls.filter((poll) => poll.active).map(pollCard).join("")}</div></main>`; }
-function renderNews() { const combinedNews = [...news, ...representativeUpdates]; return `<main class="container page-shell">${pageIntro("NEWS, NOTICES & EVENTS / PUBLIC INFORMATION", "Know what is changing around you.", "Announcements, public meetings, opportunities and project updates in one place. Always confirm time-sensitive details with the responsible institution.", link("/help", "How to verify a notice →", "text-button"))}<div class="featured-news"><div class="featured-news-copy"><p class="eyebrow">FEATURED NOTICE · ${news[0]?.date}</p><h2>${news[0]?.title}</h2><p>${news[0]?.excerpt}</p>${link("/polls", "Join the public consultation →", "button button-light")}</div><div class="featured-stamp"><span>PUBLIC<br>NOTICE</span><strong>26</strong><small>MY CHINSALI</small></div></div><div class="news-layout"><div class="news-list">${combinedNews.slice(1).map((item) => `<article class="news-item"><span class="news-type type-${item.type}">${esc(item.tag)}</span><p class="news-date">${esc(item.date)}</p><h2>${esc(item.title)}</h2><p>${esc(item.excerpt)}</p>${item.sourceUrl ? `<a class="text-button" href="${item.sourceUrl}" target="_blank" rel="noreferrer">${esc(item.sourceLabel || "Open source")} ↗</a>` : `<button type="button" class="text-button" data-action="notice-toast">Read notice →</button>`}</article>`).join("")}</div><aside class="documents-card"><p class="eyebrow">PUBLIC DOCUMENTS</p><h2>Useful downloads</h2><div class="document-link"><span>PDF</span><div><strong>Community participation guide</strong><small>How to submit, support and track</small></div><span>↓</span></div><div class="document-link"><span>PDF</span><div><strong>Public service contacts</strong><small>Departments and opening hours</small></div><span>↓</span></div><div class="document-link"><span>PDF</span><div><strong>Project record explainer</strong><small>How progress and budgets are shown</small></div><span>↓</span></div><p class="small-note">Download links become official documents when published by the council.</p></aside></div></main>`; }
+function pollCard(poll) { const voted = getStored("my-chinsali-recorded-votes", {}); const hasVoted = state.data.votedPolls[poll.id] === true || voted[poll.id] === true; return `<article class="poll-card"><div class="poll-card-head"><span class="eyebrow">ACTIVE CONSULTATION</span><span class="poll-closes">${esc(poll.closes)}</span></div><h2>${esc(poll.question)}</h2><p class="poll-helper">Choose one response. Your vote is sent to the voting service.</p><div class="poll-options">${hasVoted ? `<p class="poll-vote-confirmation" role="status">Your response was submitted. Live totals are not available in this public view.</p>` : poll.poll_options.map((option, index) => `<button type="button" class="poll-option" data-action="vote" data-poll="${esc(poll.id)}" data-option="${esc(option.id)}"><span>${index + 1}</span>${esc(option.label)}<strong>→</strong></button>`).join("")}</div><div class="poll-footer"><span>Results are not displayed publicly.</span>${hasVoted ? "<span class=\"voted-badge\">✓ Your response is recorded</span>" : ""}</div></article>`; }
+function renderPolls() { return `<main class="container page-shell narrow-shell">${pageIntro("POLLS & CONSULTATIONS / HAVE YOUR SAY", "Your opinion belongs in the record.", "Community priorities help shape conversations and planning. They do not replace formal assessment or official project approval.", link("/community", "See community context →", "text-button"))}<div class="consultation-note"><span>${icon("poll")}</span><div><strong>The voting service validates each submitted response.</strong><p>For feature-phone access, ask about the current ONTECH USSD channel at your ward office.</p></div></div><div class="poll-stack">${state.data.polls.filter((poll) => poll.active).map(pollCard).join("")}</div></main>`; }
+function renderNews() { const combinedNews = [...news, ...representativeUpdates, ...state.data.content.news]; return `<main class="container page-shell">${pageIntro("NEWS, NOTICES & EVENTS / PUBLIC INFORMATION", "Know what is changing around you.", "Announcements, public meetings, opportunities and project updates in one place. Always confirm time-sensitive details with the responsible institution.", link("/help", "How to verify a notice →", "text-button"))}<div class="featured-news"><div class="featured-news-copy"><p class="eyebrow">FEATURED NOTICE · ${news[0]?.date}</p><h2>${news[0]?.title}</h2><p>${news[0]?.excerpt}</p>${link("/polls", "Join the public consultation →", "button button-light")}</div><div class="featured-stamp"><span>PUBLIC<br>NOTICE</span><strong>26</strong><small>MY CHINSALI</small></div></div><div class="news-layout"><div class="news-list">${combinedNews.slice(1).map((item) => `<article class="news-item">${item.image ? `<img class="news-item-image" src="${esc(item.image)}" alt="${esc(item.imageAlt || "")}" loading="lazy" />` : ""}<span class="news-type type-${esc(item.type)}">${esc(item.tag)}</span><p class="news-date">${esc(item.date)}</p><h2>${esc(item.title)}</h2><p>${esc(item.excerpt)}</p>${item.sourceUrl ? `<a class="text-button" href="${item.sourceUrl}" target="_blank" rel="noreferrer">${esc(item.sourceLabel || "Open source")} ↗</a>` : `<span class="small-note">Published by My Chinsali staff</span>`}</article>`).join("")}</div><aside class="documents-card"><p class="eyebrow">PUBLIC DOCUMENTS</p><h2>Useful downloads</h2><div class="document-link"><span>PDF</span><div><strong>Community participation guide</strong><small>How to submit, support and track</small></div><span>↓</span></div><div class="document-link"><span>PDF</span><div><strong>Public service contacts</strong><small>Departments and opening hours</small></div><span>↓</span></div><div class="document-link"><span>PDF</span><div><strong>Project record explainer</strong><small>How progress and budgets are shown</small></div><span>↓</span></div><p class="small-note">Download links become official documents when published by the council.</p></aside></div></main>`; }
 function galleryCard(item, index) { return `<button type="button" class="gallery-card" data-action="gallery-open" data-index="${index}"><span class="gallery-card-image"><img src="${esc(item.image)}" alt="${esc(item.alt)}" loading="lazy" /><span class="gallery-card-arrow">↗</span></span><span class="gallery-card-copy"><span class="eyebrow">${esc(item.category)}</span><strong>${esc(item.title)}</strong><small>${esc(item.description)}</small></span></button>`; }
-function renderGalleryLightbox() { const item = galleryItems[state.galleryIndex]; if (!item) return ""; return `<div class="gallery-lightbox" role="dialog" aria-modal="true" aria-labelledby="gallery-lightbox-title"><button type="button" class="gallery-lightbox-backdrop" data-action="gallery-close" aria-label="Close gallery"></button><div class="gallery-lightbox-card"><button type="button" class="gallery-close" data-action="gallery-close" aria-label="Close image">×</button><img src="${esc(item.image)}" alt="${esc(item.alt)}" /><div class="gallery-lightbox-copy"><p class="eyebrow">${esc(item.category)} · ${esc(item.source)}</p><h2 id="gallery-lightbox-title">${esc(item.title)}</h2><p>${esc(item.description)}</p><div class="gallery-lightbox-actions"><button type="button" class="button button-secondary" data-action="gallery-prev">← Previous</button><button type="button" class="button button-primary" data-action="gallery-next">Next →</button></div></div></div></div>`; }
-function renderGallerySection(preview = false) { const items = state.galleryFilter === "all" ? galleryItems : galleryItems.filter((item) => item.category === state.galleryFilter); const visible = preview ? items.slice(0, 4) : items; return `<section class="${preview ? "container section-block gallery-preview" : "gallery-section"}"><div class="section-heading"><div><p class="eyebrow">PLACES & MEMORY / CHINSALI</p><h2>${preview ? "See the places that shape the district." : "A district worth seeing slowly."}</h2><p class="section-lede">${preview ? "From Lubwa Mission to Chipoma Falls, explore the landmarks, cultural memory and everyday places that make Chinsali home." : "Explore a growing visual record of heritage, nature and town life. Images are for orientation; confirm access and current conditions locally."}</p></div>${preview ? link("/gallery", "Open photo gallery →", "text-button") : ""}</div>${preview ? "" : `<div class="filter-row gallery-filters">${["all", "Heritage", "Nature", "Town life", "Maps"].map((filter) => button(filter === "all" ? "Everything" : filter, "gallery-filter", `filter-chip ${state.galleryFilter === filter ? "selected" : ""}`, `data-filter="${esc(filter)}"`)).join("")}</div>`}<div class="gallery-grid">${visible.map((item) => galleryCard(item, galleryItems.indexOf(item))).join("")}</div>${preview ? `<p class="small-note gallery-credit-note">Landmarks and cultural descriptions follow the Chinsali Municipal Council tourism and heritage overview. ${link("/gallery", "View sources and the full gallery →", "text-button")}</p>` : ""}</section>${renderGalleryLightbox()}`; }
+function allGalleryItems() { return [...state.data.content.gallery, ...galleryItems]; }
+function renderGalleryLightbox() { const item = allGalleryItems()[state.galleryIndex]; if (!item) return ""; return `<div class="gallery-lightbox" role="dialog" aria-modal="true" aria-labelledby="gallery-lightbox-title"><button type="button" class="gallery-lightbox-backdrop" data-action="gallery-close" aria-label="Close gallery"></button><div class="gallery-lightbox-card"><button type="button" class="gallery-close" data-action="gallery-close" aria-label="Close image">×</button><img src="${esc(item.image)}" alt="${esc(item.alt)}" /><div class="gallery-lightbox-copy"><p class="eyebrow">${esc(item.category)} · ${esc(item.source || "My Chinsali staff")}</p><h2 id="gallery-lightbox-title">${esc(item.title)}</h2><p>${esc(item.description)}</p><div class="gallery-lightbox-actions"><button type="button" class="button button-secondary" data-action="gallery-prev">← Previous</button><button type="button" class="button button-primary" data-action="gallery-next">Next →</button></div></div></div></div>`; }
+function renderGallerySection(preview = false) { const gallery = allGalleryItems(); const items = state.galleryFilter === "all" ? gallery : gallery.filter((item) => item.category === state.galleryFilter); const visible = preview ? items.slice(0, 4) : items; return `<section class="${preview ? "container section-block gallery-preview" : "gallery-section"}"><div class="section-heading"><div><p class="eyebrow">PLACES & MEMORY / CHINSALI</p><h2>${preview ? "See the places that shape the district." : "A district worth seeing slowly."}</h2><p class="section-lede">${preview ? "From Lubwa Mission to Chipoma Falls, explore the landmarks, cultural memory and everyday places that make Chinsali home." : "Explore a growing visual record of heritage, nature and town life. Images are for orientation; confirm access and current conditions locally."}</p></div>${preview ? link("/gallery", "Open photo gallery →", "text-button") : ""}</div>${preview ? "" : `<div class="filter-row gallery-filters">${["all", "Heritage", "Nature", "Town life", "Maps"].map((filter) => button(filter === "all" ? "Everything" : filter, "gallery-filter", `filter-chip ${state.galleryFilter === filter ? "selected" : ""}`, `data-filter="${esc(filter)}"`)).join("")}</div>`}<div class="gallery-grid">${visible.map((item) => galleryCard(item, gallery.indexOf(item))).join("")}</div>${preview ? `<p class="small-note gallery-credit-note">Landmarks and cultural descriptions follow the Chinsali Municipal Council tourism and heritage overview. ${link("/gallery", "View sources and the full gallery →", "text-button")}</p>` : ""}</section>${renderGalleryLightbox()}`; }
 function renderLandmarkMapSection() { return `<section class="landmark-map-section"><div class="section-heading"><div><p class="eyebrow">LANDMARK MAP / OPENSTREETMAP</p><h2>Find the places in the gallery.</h2><p class="section-lede">Tap a marker to see the public coordinate, then open the matching gallery image. The market image uses a Chinsali town-centre reference because no distinct public market pin was available.</p></div><span class="map-reference-note">${landmarkLocations.length} gallery references</span></div><div id="landmark-map" class="landmark-map" role="application" aria-label="Interactive map of Chinsali gallery landmarks"><div class="map-loading">Loading the landmark map…</div></div><p class="small-note map-disclaimer">Coordinates are map references, not a surveyed access route. Confirm permission, road conditions and current local guidance before visiting. Map tiles © OpenStreetMap contributors.</p></section>`; }
 function renderVisitorMemories() { return `<section class="visitor-memories"><div class="section-heading"><div><p class="eyebrow">VISITOR MEMORIES / COMMUNITY VOICE</p><h2>What do you remember about Chinsali?</h2><p class="section-lede">Share a place, a feeling or a story from your visit. Keep it respectful and avoid private contact details.</p></div></div><div class="memory-layout"><form class="civic-form memory-form" id="memory-form"><div class="form-grid"><label class="field"><span>Name or display name <small>optional</small></span><input name="name" maxlength="80" placeholder="e.g. Chinsali neighbour" /></label><label class="field">${formSelect("ward", "Ward or community", WARDS, state.ward).replace('<label class="field">', "").replace('</label>', "")}</label><label class="field field-full">${formSelect("category", "What kind of memory is this?", ["Heritage", "Nature", "Town life", "Food and markets", "Community life", "Other"]).replace('<label class="field">', "").replace('</label>', "")}</label><label class="field field-full"><span>Your experience or memory</span><textarea name="text" rows="6" maxlength="1200" required placeholder="Tell visitors what made this place meaningful to you…"></textarea></label><label class="check-field field-full"><input type="checkbox" name="consent" required /><span><strong>I understand this may be shown publicly on this browser.</strong><small>Do not include personal phone numbers, accusations or private information.</small></span></label></div><div class="form-actions"><button class="button button-primary button-large" type="submit">Share this memory <span>→</span></button></div><p class="form-privacy">${icon("lock")} Saved in this browser only until a moderated public submission service is connected.</p></form><aside class="memory-aside"><div class="memory-notice"><p class="eyebrow">A CLEAR DISTINCTION</p><h3>Stories are not council statements.</h3><p>These are visitor-facing suggestions and memories. They are not automatically verified, endorsed or published as official council information.</p></div><div class="memory-list" id="memory-list"><p class="eyebrow">RECENTLY SHARED</p>${memoryCards(getMemories())}</div></aside></div></section>`; }
-function initLandmarkMap() { const element = document.querySelector("#landmark-map"); if (!element) return; if (!window.L) { element.innerHTML = `<div class="map-fallback"><strong>Interactive map unavailable right now.</strong><span>Use the landmark coordinates listed in the gallery sources, or try again with an internet connection.</span></div>`; return; } landmarkMap = window.L.map(element, { scrollWheelZoom: false }); const tiles = window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap contributors" }).addTo(landmarkMap); tiles.on("tileerror", () => { if (!element.querySelector(".map-tile-warning")) element.insertAdjacentHTML("beforeend", `<div class="map-tile-warning">Map tiles could not be loaded. The gallery coordinates remain available below.</div>`); }); const map = landmarkMap; const markers = landmarkLocations.map((location) => { const item = galleryItems.find((entry) => entry.id === location.galleryId); const marker = window.L.marker([location.lat, location.lng]).addTo(map); marker.bindPopup(`<strong>${esc(location.title)}</strong><br><span>${esc(location.category)} · ${esc(location.accuracy)}</span><br><span>${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}</span><br><button type="button" class="map-gallery-link" data-action="gallery-open" data-index="${galleryItems.indexOf(item)}">Open gallery image →</button>`); return marker; }); if (markers.length) map.fitBounds(window.L.featureGroup(markers).getBounds().pad(0.12)); window.setTimeout(() => map.invalidateSize(), 0); }
+function initLandmarkMap() { const element = document.querySelector("#landmark-map"); if (!element) return; if (!window.L) { element.innerHTML = `<div class="map-fallback"><strong>Interactive map unavailable right now.</strong><span>Use the landmark coordinates listed in the gallery sources, or try again with an internet connection.</span></div>`; return; } landmarkMap = window.L.map(element, { scrollWheelZoom: false }); const map = landmarkMap; const tiles = window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap contributors" }).addTo(map); tiles.on("tileerror", () => { if (!element.querySelector(".map-tile-warning")) element.insertAdjacentHTML("beforeend", `<div class="map-tile-warning">Map tiles could not be loaded. The gallery coordinates remain available below.</div>`); }); const gallery = allGalleryItems(); const markers = landmarkLocations.map((location) => { const item = galleryItems.find((entry) => entry.id === location.galleryId); const marker = window.L.marker([location.lat, location.lng]).addTo(map); marker.bindPopup(`<strong>${esc(location.title)}</strong><br><span>${esc(location.category)} · ${esc(location.accuracy)}</span><br><span>${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}</span><br><button type="button" class="map-gallery-link" data-action="gallery-open" data-index="${gallery.indexOf(item)}">Open gallery image →</button>`); return marker; }); if (markers.length) map.fitBounds(window.L.featureGroup(markers).getBounds().pad(0.12)); window.setTimeout(() => map.invalidateSize(), 0); }
 function renderGallery() { return `<main class="container page-shell">${pageIntro("PHOTO GALLERY / LANDMARKS & CULTURE", "See Chinsali through its places.", "A lightweight gallery of heritage sites, nature and everyday public life across Chinsali District.", link("/community", "Open my community view →", "text-button"))}${renderGallerySection(false)}${renderLandmarkMapSection()}${renderVisitorMemories()}</main>`; }
 function renderHelp() { const faqs = [{ q: "Do I need an account to report something?", a: "No. Public reports and proposals can be submitted without an account. Add a phone number only if you want follow-up." }, { q: "Is a community proposal an approved project?", a: "No. A proposal records a community need and can collect public support. Official approval, budgets and procurement remain separate decisions." }, { q: "How do I follow up on a report?", a: "Keep your reference number. Use Development Tracker when the council or participating institution has made a status update." }, { q: "Can I report anonymously?", a: "Yes for ordinary community concerns. For serious allegations, use the separate whistleblowing surface and do not put sensitive information in a public report." }, { q: "What if I do not have internet?", a: "Use the current ONTECH feature-phone channel where available, ask at your ward office or visit the Civic Centre help desk for supported SMS and USSD guidance." }]; return `<main class="container page-shell">${pageIntro("HELP & INFORMATION / START HERE", "A clearer way to get unstuck.", "Find answers about reports, proposals, public records, privacy and feature-phone access.", link("/services", "Browse public services →", "text-button"))}<div class="help-grid"><section class="faq-card"><p class="eyebrow">COMMON QUESTIONS</p>${faqs.map((faq, index) => `<div class="faq-item ${index === 0 ? "open" : ""}"><button type="button" data-action="toggle-faq"><span>${esc(faq.q)}</span><strong>${index === 0 ? "−" : "+"}</strong></button><p>${esc(faq.a)}</p></div>`).join("")}</section><aside class="help-aside"><div class="help-contact"><p class="eyebrow">VISIT IN PERSON</p><h2>Civic Centre help desk</h2><p>For service navigation, assisted submissions and current SMS/USSD guidance.</p><strong>Mon–Fri · 08:00–16:30</strong><span>Chinsali District Civic Centre</span></div><div class="help-contact contact-orange"><p class="eyebrow">URGENT</p><h2>Emergency contacts</h2><div class="emergency-numbers"><strong>991 <small>Police</small></strong><strong>993 <small>Fire</small></strong><strong>992 <small>Ambulance</small></strong></div></div></aside></div><section class="access-strip"><div><p class="eyebrow">ACCESS CHANNELS</p><h2>Choose the channel that works for you.</h2></div><div class="access-item"><strong>Web</strong><span>Full public portal</span></div><div class="access-item"><strong>SMS</strong><span>Basic updates and reports</span></div><div class="access-item"><strong>*388*133#</strong><span>Feature-phone access</span></div></section></main>`; }
-function renderAdmin() { return `<main class="container page-shell narrow-shell">${pageIntro("STAFF PORTAL / AUTHORISED ACCESS", "A separate workspace for the people who respond.", "The public portal stays open and simple. Authorised council and institutional teams use a separate role-based workspace to assign, moderate, update and audit records.", "")}<div class="admin-gate"><div class="admin-gate-mark">${icon("lock")}</div><div><p class="eyebrow">AUTHORISED PERSONNEL ONLY</p><h2>Sign in to the administration portal</h2><p>Role-based access levels are planned for council administrators, departmental officers, project officers, moderators and authorised agency personnel.</p><form id="admin-form" class="admin-form"><label class="field"><span>Work email</span><input type="email" name="email" placeholder="name@institution.gov.zm" required /></label><label class="field"><span>Password</span><input type="password" name="password" placeholder="••••••••" required /></label><button class="button button-dark button-large" type="submit">Continue to staff portal <span>→</span></button></form><p class="small-note">Demo surface only — production authentication, permissions and audit controls must be connected before operational use.</p></div></div><section class="role-grid"><div><span>01</span><strong>Review & assign</strong><p>Route incoming reports to the responsible department.</p></div><div><span>02</span><strong>Publish progress</strong><p>Keep project milestones, budgets and updates current.</p></div><div><span>03</span><strong>Listen & learn</strong><p>Read participation trends without exposing resident data.</p></div></section></main>`; }
+function adminItemCard(item, collection) {
+    const title = collection === "polls" ? item.question : item.title;
+    const description = collection === "news" ? item.excerpt : collection === "gallery" ? item.description : `${item.options.join(" · ")} · closes ${item.closes}`;
+    return `<article class="admin-item"><div>${item.image ? `<img src="${esc(item.image)}" alt="" loading="lazy" />` : ""}<span class="admin-item-status status-${esc(item.status)}">${item.status === "published" ? "Published" : "Draft"}</span><h3>${esc(title)}</h3><p>${esc(description)}</p></div><div class="admin-item-actions"><button type="button" class="button button-secondary" data-action="admin-edit" data-collection="${collection}" data-id="${esc(item.id)}">Edit</button><button type="button" class="button button-secondary" data-action="admin-delete" data-collection="${collection}" data-id="${esc(item.id)}">Delete</button></div></article>`;
+}
+function renderAdminEditor() {
+    const { collection, editing } = state.admin;
+    const value = (key) => esc(editing?.[key] ?? "");
+    if (collection === "news") return `<form class="civic-form admin-editor" id="admin-news-form"><input type="hidden" name="id" value="${value("id")}" /><input type="hidden" name="image" value="${value("image")}" /><p class="eyebrow">${editing ? "EDIT NEWS ITEM" : "NEW NEWS ITEM"}</p>${editing?.image ? `<img class="admin-image-preview" src="${value("image")}" alt="" />` : ""}<div class="form-grid"><label class="field"><span>Headline</span><input name="title" maxlength="140" value="${value("title")}" required /></label><label class="field"><span>Short label</span><input name="tag" maxlength="40" value="${value("tag")}" placeholder="Public notice" required /></label><label class="field"><span>Publication date</span><input type="date" name="date" value="${value("date") || new Date().toISOString().slice(0, 10)}" required /></label><label class="field"><span>Type</span><select name="type">${["notice", "update", "event", "opportunity"].map((item) => `<option value="${item}" ${editing?.type === item ? "selected" : ""}>${item[0].toUpperCase()}${item.slice(1)}</option>`).join("")}</select></label><label class="field field-full"><span>Summary</span><textarea name="excerpt" rows="4" maxlength="800" required>${value("excerpt")}</textarea></label><label class="field"><span>Photo description <small>required when a photo is attached</small></span><input name="imageAlt" maxlength="240" value="${value("imageAlt")}" /></label><label class="field"><span>Featured photo <small>JPEG, PNG or WebP · max 5 MB · optional</small></span><input type="file" name="imageFile" accept="image/jpeg,image/png,image/webp" /></label><label class="field"><span>Visibility</span><select name="status"><option value="draft" ${editing?.status !== "published" ? "selected" : ""}>Save as draft</option><option value="published" ${editing?.status === "published" ? "selected" : ""}>Publish publicly</option></select></label></div><div class="form-actions"><button class="button button-primary" type="submit">${editing ? "Save changes" : "Create news item"}</button>${editing ? button("Cancel", "admin-cancel-edit", "button button-secondary") : ""}</div></form>`;
+    if (collection === "gallery") return `<form class="civic-form admin-editor" id="admin-gallery-form"><input type="hidden" name="id" value="${value("id")}" /><input type="hidden" name="image" value="${value("image")}" /><p class="eyebrow">${editing ? "EDIT PHOTO" : "ADD PHOTO"}</p>${editing?.image ? `<img class="admin-image-preview" src="${value("image")}" alt="" />` : ""}<div class="form-grid"><label class="field"><span>Photo title</span><input name="title" maxlength="140" value="${value("title")}" required /></label><label class="field"><span>Category</span><select name="category">${["Heritage", "Nature", "Town life", "Food and markets", "Community life"].map((item) => `<option ${editing?.category === item ? "selected" : ""}>${item}</option>`).join("")}</select></label><label class="field field-full"><span>Description</span><textarea name="description" rows="3" maxlength="800" required>${value("description")}</textarea></label><label class="field"><span>Image description (alt text)</span><input name="alt" maxlength="240" value="${value("alt")}" required /></label><label class="field"><span>Photo source / credit</span><input name="source" maxlength="200" value="${value("source")}" placeholder="Photographer or permission/source" required /></label><label class="field field-full"><span>Image file <small>JPEG, PNG or WebP · max 5 MB</small></span><input type="file" name="imageFile" accept="image/jpeg,image/png,image/webp" ${editing?.image ? "" : "required"} /></label><label class="field"><span>Visibility</span><select name="status"><option value="draft" ${editing?.status !== "published" ? "selected" : ""}>Save as draft</option><option value="published" ${editing?.status === "published" ? "selected" : ""}>Publish publicly</option></select></label></div><div class="form-actions"><button class="button button-primary" type="submit">${editing ? "Save changes" : "Add photo"}</button>${editing ? button("Cancel", "admin-cancel-edit", "button button-secondary") : ""}</div></form>`;
+    return `<form class="civic-form admin-editor" id="admin-poll-form"><input type="hidden" name="id" value="${value("id")}" /><p class="eyebrow">${editing ? "EDIT POLL DRAFT" : "CREATE POLL DRAFT"}</p><div class="callout callout-blue"><div><strong>Polls are saved as drafts.</strong><p>Publishing votes needs an existing poll record and the configured cast_vote database function. This tool does not write votes or change database schemas.</p></div></div><div class="form-grid"><label class="field field-full"><span>Question</span><textarea name="question" rows="3" maxlength="240" required>${value("question")}</textarea></label><label class="field"><span>Closes on</span><input type="date" name="closes" value="${value("closes") || new Date().toISOString().slice(0, 10)}" required /></label><label class="field field-full"><span>Answer options <small>one per line · 2–6 options</small></span><textarea name="options" rows="5" maxlength="800" required>${esc(editing?.options?.join("\n") ?? "")}</textarea></label></div><div class="form-actions"><button class="button button-primary" type="submit">${editing ? "Save poll draft" : "Create poll draft"}</button>${editing ? button("Cancel", "admin-cancel-edit", "button button-secondary") : ""}</div></form>`;
+}
+function renderLogin() { return `<main class="container page-shell narrow-shell admin-login-page">${pageIntro("STAFF PORTAL / AUTHORISED ACCESS", "Sign in to My Chinsali.", "Use your local staff password to open the private publishing workspace.", link("/", "Back to public site →", "text-button"))}<section class="admin-login-card"><div class="admin-gate-mark">${icon("lock")}</div><p class="eyebrow">STAFF SIGN IN</p><h2>Welcome back.</h2><p>Manage public notices, gallery photos and poll drafts. Resident submissions are not available in this workspace.</p><form id="admin-form" class="admin-login-form"><label class="field"><span>Password</span><input type="password" name="password" autocomplete="current-password" required /></label><button class="button button-dark button-large" type="submit" ${state.admin.loading ? "disabled" : ""}>${state.admin.loading ? "Checking…" : "Continue"} <span>→</span></button></form><p class="small-note">${esc(state.admin.error || "Staff access is configured on the local backend.")}</p></section></main>`; }
+function renderAdmin() {
+    if (state.admin.loading) return `<main class="container page-shell narrow-shell">${pageIntro("STAFF PORTAL / PRIVATE WORKSPACE", "Loading the publishing workspace.", "Checking the local backend session and editorial records.", "")}<div class="admin-gate"><p>One moment…</p></div></main>`;
+    if (!state.admin.authenticated) return `<main class="container page-shell narrow-shell">${pageIntro("PRIVATE STAFF WORKSPACE", "Sign-in is required.", "The publishing dashboard is available to authorised staff only.", link("/login", "Go to staff sign in →", "button button-primary"))}</main>`;
+    const collectionNames = { news: "News", gallery: "Photo gallery", polls: "Poll drafts" };
+    const overview = state.admin.overview ?? { news: 0, publishedNews: 0, gallery: 0, publishedGallery: 0, pollDrafts: 0 };
+    const metrics = [["Published news", overview.publishedNews], ["Published photos", overview.publishedGallery], ["Poll drafts", overview.pollDrafts]];
+    const items = state.admin.items[state.admin.collection] ?? [];
+    return `<main class="container page-shell admin-page">${pageIntro("STAFF PORTAL / PUBLISHING WORKSPACE", "Keep public information current.", "Create and edit public notices and gallery photos. Polls remain drafts until a compatible database-backed voting record is configured.", button("Sign out", "admin-logout", "button button-secondary"))}<div class="admin-metrics">${metrics.map(([label, total]) => `<div><span>${label}</span><strong>${total}</strong></div>`).join("")}</div><div class="admin-tabs" role="tablist" aria-label="Content type">${Object.entries(collectionNames).map(([key, label]) => `<button type="button" role="tab" aria-selected="${state.admin.collection === key}" class="${state.admin.collection === key ? "selected" : ""}" data-action="admin-tab" data-collection="${key}">${label}</button>`).join("")}</div><div class="admin-workspace"><section><div class="admin-list-heading"><div><p class="eyebrow">${esc(collectionNames[state.admin.collection])}</p><h2>${items.length} saved ${state.admin.collection === "polls" ? "drafts" : "items"}</h2></div></div><div class="admin-item-list">${items.map((item) => adminItemCard(item, state.admin.collection)).join("") || `<div class="empty-state"><h3>No ${esc(state.admin.collection)} yet.</h3><p>Create the first item using the editor.</p></div>`}</div></section><section>${renderAdminEditor()}</section></div><p class="small-note admin-privacy-note">This dashboard contains editorial content only. Resident reports and submissions remain insert-only and are not available here. Uploaded images stay private until attached to published content.</p></main>`;
+}
 function searchCatalog() {
     const pages = [
         ["Public services", "Find services, departments, permits, health, agriculture, education, emergency and public support.", "/services", "Page"],
@@ -220,12 +242,12 @@ function searchCatalog() {
         ["Polls & consultations", "Vote on community priorities and public planning questions.", "/polls", "Participation"],
         ["News & notices", "Announcements, public meetings, opportunities and project updates.", "/news", "Page"],
         ["Help & information", "Answers about reports, proposals, privacy, public records and feature-phone access.", "/help", "Page"],
-        ["Staff portal", "Authorised workspace for council and institutional teams.", "/admin", "Page"],
+        ["Staff sign in", "Authorised workspace for council and institutional teams.", "/login", "Page"],
     ].map(([title, description, route, type]) => ({ title, description, route, type }));
     const servicesIndex = services.map((item) => ({ title: item.title, description: `${item.description} ${item.department} ${item.category}`, route: "/services", type: "Service" }));
     const projectsIndex = state.data.projects.map((item) => ({ title: item.title, description: `${item.summary} ${item.category} ${item.ward} ${item.status}`, route: "/tracker", type: "Project" }));
-    const newsIndex = [...news, ...representativeUpdates].map((item) => ({ title: item.title, description: `${item.excerpt} ${item.tag}`, route: "/news", type: "News" }));
-    const galleryIndex = [...galleryItems, ...storyItems].map((item) => ({ title: item.title, description: `${item.description} ${item.category} ${item.source}`, route: "/gallery", type: "Gallery" }));
+    const newsIndex = [...news, ...representativeUpdates, ...state.data.content.news].map((item) => ({ title: item.title, description: `${item.excerpt} ${item.tag}`, route: "/news", type: "News" }));
+    const galleryIndex = [...allGalleryItems(), ...storyItems].map((item) => ({ title: item.title, description: `${item.description} ${item.category} ${item.source ?? ""}`, route: "/gallery", type: "Gallery" }));
     const pollIndex = state.data.polls.map((item) => ({ title: item.question, description: `${item.poll_options.map((option) => option.label).join(" ")} ${item.closes}`, route: "/polls", type: "Consultation" }));
     return [...pages, ...servicesIndex, ...projectsIndex, ...newsIndex, ...galleryIndex, ...pollIndex];
 }
@@ -248,6 +270,7 @@ function renderPage() { switch (state.route) {
     case "/news": return renderNews();
     case "/help": return renderHelp();
     case "/admin": return renderAdmin();
+    case "/login": return renderLogin();
     default: return renderHome();
 } }
 function render() { const app = document.querySelector("#app"); if (!app)
@@ -257,8 +280,207 @@ else
     document.body.classList.remove("modal-open"); }
 function showToast(message, tone = "success") { const existing = document.querySelector(".toast"); existing?.remove(); const toast = document.createElement("div"); toast.className = `toast toast-${tone}`; toast.innerHTML = `${tone === "success" ? icon("check") : icon("alert")}<span>${esc(message)}</span>`; document.body.append(toast); if (state.toastTimer)
     window.clearTimeout(state.toastTimer); state.toastTimer = window.setTimeout(() => toast.remove(), 4200); }
-function navigate(route) { const next = normalizeRoute(route); state.route = next; state.mobileOpen = false; state.modalService = null; window.history.pushState({}, "", `#${next}`); render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+function navigate(route) { const next = normalizeRoute(route); state.route = next; state.mobileOpen = false; state.modalService = null; window.history.pushState({}, "", `#${next}`); render(); if ((next === "/admin" || next === "/login") && !state.admin.loading) void refreshAdminSession(); window.scrollTo({ top: 0, behavior: "smooth" }); }
 function cycleWard() { const index = WARDS.indexOf(state.ward); state.ward = WARDS[(index + 1) % WARDS.length] ?? WARDS[0]; localStorage.setItem("my-chinsali-ward", state.ward); render(); showToast(`Community view changed to ${state.ward}.`); }
+async function adminRequest(path, { method = "GET", body } = {}) {
+    const options = { method, credentials: "same-origin", headers: {} };
+    if (body !== undefined) {
+        options.headers["Content-Type"] = "application/json";
+        options.body = JSON.stringify(body);
+    }
+    const response = await fetch(path, options);
+    let result = {};
+    if (response.status !== 204) {
+        try {
+            result = await response.json();
+        }
+        catch {
+            throw new Error("The staff service returned an invalid response.");
+        }
+    }
+    if (!response.ok) throw new Error(result.error ?? "The staff request could not be completed.");
+    return result;
+}
+async function loadPublicContent() {
+    try {
+        const response = await fetch("/api/content/public");
+        if (!response.ok) throw new Error("Public editorial content could not be loaded.");
+        const content = await response.json();
+        if (!Array.isArray(content.news) || !Array.isArray(content.gallery)) throw new Error("The public content response was invalid.");
+        state.data.content = content;
+        if (state.route !== "/admin") render();
+    }
+    catch (error) {
+        console.warn("Public editorial content is unavailable:", error instanceof Error ? error.message : "Unknown error");
+    }
+}
+async function loadAdminWorkspace() {
+    state.admin.loading = true;
+    state.admin.error = "";
+    render();
+    try {
+        const [overview, newsItems, galleryItems, polls] = await Promise.all([
+            adminRequest("/api/admin/overview"),
+            adminRequest("/api/admin/content/news"),
+            adminRequest("/api/admin/content/gallery"),
+            adminRequest("/api/admin/content/polls"),
+        ]);
+        state.admin.overview = overview;
+        state.admin.items = { news: newsItems.items, gallery: galleryItems.items, polls: polls.items };
+        state.admin.loading = false;
+        state.admin.authenticated = true;
+        render();
+    }
+    catch (error) {
+        state.admin.loading = false;
+        state.admin.error = error instanceof Error ? error.message : "The staff workspace could not be loaded.";
+        if (/sign in|session/i.test(state.admin.error)) {
+            state.admin.authenticated = false;
+            if (state.route === "/admin") {
+                state.route = "/login";
+                window.history.replaceState({}, "", "#/login");
+            }
+        }
+        render();
+    }
+}
+async function refreshAdminSession() {
+    state.admin.loading = true;
+    state.admin.error = "";
+    render();
+    try {
+        const session = await adminRequest("/api/admin/session");
+        state.admin.authenticated = session.authenticated === true;
+        state.admin.loading = false;
+        if (state.admin.authenticated) {
+            if (state.route === "/login") {
+                state.route = "/admin";
+                window.history.replaceState({}, "", "#/admin");
+            }
+            await loadAdminWorkspace();
+        }
+        else if (state.route === "/admin") {
+            state.route = "/login";
+            window.history.replaceState({}, "", "#/login");
+            render();
+        }
+        else render();
+    }
+    catch {
+        state.admin.loading = false;
+        state.admin.authenticated = false;
+        state.admin.error = "The local staff service is unavailable. Start the backend and try again.";
+        if (state.route === "/admin") {
+            state.route = "/login";
+            window.history.replaceState({}, "", "#/login");
+        }
+        render();
+    }
+}
+async function handleAdminLogin(form) {
+    const submitButton = form.querySelector("button[type=submit]");
+    if (submitButton) submitButton.disabled = true;
+    state.admin.loading = true;
+    state.admin.error = "";
+    render();
+    try {
+        await adminRequest("/api/admin/session", { method: "POST", body: { password: readForm(form, "password") } });
+        state.admin.authenticated = true;
+        state.route = "/admin";
+        window.history.replaceState({}, "", "#/admin");
+        await loadAdminWorkspace();
+        showToast("Staff workspace opened.");
+    }
+    catch (error) {
+        state.admin.loading = false;
+        state.admin.authenticated = false;
+        state.admin.error = error instanceof Error ? error.message : "Sign-in failed.";
+        render();
+    }
+}
+function readImageAsBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("The selected image could not be read."));
+        reader.onload = () => {
+            const result = String(reader.result ?? "");
+            const separator = result.indexOf(",");
+            if (separator < 0) reject(new Error("The selected image could not be encoded."));
+            else resolve(result.slice(separator + 1));
+        };
+        reader.readAsDataURL(file);
+    });
+}
+async function handleAdminContentSubmit(form) {
+    const formId = form.getAttribute("id");
+    const collection = formId === "admin-news-form" ? "news" : formId === "admin-gallery-form" ? "gallery" : "polls";
+    const id = form.querySelector('input[name="id"]')?.value ?? "";
+    const payload = collection === "news"
+        ? { title: readForm(form, "title"), tag: readForm(form, "tag"), date: readForm(form, "date"), type: readForm(form, "type"), excerpt: readForm(form, "excerpt"), image: readForm(form, "image"), imageAlt: readForm(form, "imageAlt"), status: readForm(form, "status") }
+        : collection === "gallery"
+            ? { title: readForm(form, "title"), category: readForm(form, "category"), description: readForm(form, "description"), alt: readForm(form, "alt"), source: readForm(form, "source"), status: readForm(form, "status"), image: readForm(form, "image") }
+            : { question: readForm(form, "question"), closes: readForm(form, "closes"), options: readForm(form, "options").split(/\r?\n/).map((option) => option.trim()).filter(Boolean) };
+    let uploadedImage = "";
+    const file = form.querySelector('input[name="imageFile"]')?.files?.[0];
+    if ((collection === "news" || collection === "gallery") && file) {
+        const data = await readImageAsBase64(file);
+        const upload = await adminRequest("/api/admin/uploads", { method: "POST", body: { contentType: file.type, data } });
+        uploadedImage = upload.image;
+        payload.image = uploadedImage;
+    }
+    try {
+        await adminRequest(`/api/admin/content/${collection}${id ? `/${id}` : ""}`, {
+            method: id ? "PUT" : "POST",
+            body: payload,
+        });
+    }
+    catch (error) {
+        if (uploadedImage) {
+            try {
+                await adminRequest(`/api/admin/uploads/${uploadedImage.split("/").at(-1)}`, { method: "DELETE" });
+            }
+            catch (cleanupError) {
+                console.warn("An unused image upload could not be removed:", cleanupError instanceof Error ? cleanupError.message : "Unknown error");
+            }
+        }
+        throw error;
+    }
+    state.admin.editing = null;
+    await loadAdminWorkspace();
+    await loadPublicContent();
+    showToast(id ? "Content changes saved." : collection === "polls" ? "Poll draft created." : "Content created.");
+}
+async function handleAdminLogout() {
+    try {
+        await adminRequest("/api/admin/session", { method: "DELETE" });
+        state.admin.authenticated = false;
+        state.admin.items = { news: [], gallery: [], polls: [] };
+        state.admin.overview = null;
+        state.admin.editing = null;
+        state.admin.error = "";
+        state.route = "/login";
+        window.history.replaceState({}, "", "#/login");
+        render();
+        showToast("You have signed out.");
+    }
+    catch (error) {
+        showToast(error instanceof Error ? error.message : "Could not sign out.", "error");
+    }
+}
+async function deleteAdminItem(collection, id) {
+    const item = state.admin.items[collection]?.find((entry) => entry.id === id);
+    if (!item || !window.confirm(`Delete “${collection === "polls" ? item.question : item.title}”?`)) return;
+    try {
+        await adminRequest(`/api/admin/content/${collection}/${id}`, { method: "DELETE" });
+        if (state.admin.editing?.id === id) state.admin.editing = null;
+        await loadAdminWorkspace();
+        await loadPublicContent();
+        showToast("Content deleted.");
+    }
+    catch (error) {
+        showToast(error instanceof Error ? error.message : "The content could not be deleted.", "error");
+    }
+}
 async function submitPublicRecord(payload) {
     const saveLocally = () => {
         const ref = randomRef(payload.kind === "proposal" ? "PROP" : "MC");
@@ -347,9 +569,6 @@ async function handleSubmit(form) { const formId = form.id; const submitButton =
         }
         showToast("Your Chinsali memory is saved in this browser.");
     }
-    else if (formId === "admin-form") {
-        showToast("Staff authentication is not connected in this prototype.", "info");
-    }
 }
 catch (error) {
     showToast(error instanceof Error ? error.message : "Please check the form and try again.", "error");
@@ -358,9 +577,10 @@ catch (error) {
         submitButton.innerHTML = submitButton.dataset.original ?? "Submit";
     }
 } }
-function vote(pollId, optionId) { const voted = getStored("my-chinsali-votes", {}); if (voted[pollId])
-    return; const poll = state.data.polls.find((item) => item.id === pollId); const option = poll?.poll_options.find((item) => item.id === optionId); if (option)
-    option.votes += 1; voted[pollId] = true; setStored("my-chinsali-votes", voted); render(); showToast("Thank you — your response is recorded."); }
+async function vote(pollId, optionId) { const voted = getStored("my-chinsali-recorded-votes", {}); if (voted[pollId] || state.data.votedPolls[pollId])
+    return; const poll = state.data.polls.find((item) => item.id === pollId); const option = poll?.poll_options.find((item) => item.id === optionId); if (!option)
+    return; const optionButtons = [...document.querySelectorAll(".poll-option")].filter((button) => button.dataset.poll === pollId); optionButtons.forEach((button) => { button.disabled = true; }); try { const response = await fetch("/api/votes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pollId, optionId }) }); let result = {}; try { result = await response.json(); } catch { throw new Error("The voting service returned an invalid response."); } if (!response.ok || result.accepted !== true)
+    throw new Error(result.error ?? "Your vote could not be recorded."); state.data.votedPolls[pollId] = true; voted[pollId] = true; try { setStored("my-chinsali-recorded-votes", voted); } catch (error) { console.warn("The vote confirmation could not be saved in this browser:", error instanceof Error ? error.message : "Unknown error"); } render(); showToast("Your response was recorded by the voting service."); } catch (error) { optionButtons.forEach((button) => { if (button.isConnected) button.disabled = false; }); showToast(error instanceof Error ? error.message : "The voting service is unavailable. Please try again.", "error"); } }
 function showTrackerResult(reference) { const target = document.querySelector("#tracker-result"); if (!target)
     return; const refs = getStored("my-chinsali-references", {}); const local = refs[reference.toUpperCase()]; if (local) {
     target.innerHTML = `<div class="tracker-result result-local"><div><p class="eyebrow">${esc(local.kind)} · ${esc(reference.toUpperCase())}</p><h2>${esc(local.title)}</h2><p>This browser has a locally stored fallback record. Live status updates appear when the connected service is available.</p></div><span class="status tone-orange">${esc(local.status)}</span></div>`;
@@ -416,6 +636,28 @@ function handleClick(event) { const target = event.target.closest("[data-route],
             render();
         }
         break;
+    case "admin-tab":
+        state.admin.collection = target.dataset.collection ?? "news";
+        state.admin.editing = null;
+        render();
+        break;
+    case "admin-edit": {
+        const collection = target.dataset.collection ?? "news";
+        state.admin.collection = collection;
+        state.admin.editing = state.admin.items[collection]?.find((item) => item.id === target.dataset.id) ?? null;
+        render();
+        break;
+    }
+    case "admin-cancel-edit":
+        state.admin.editing = null;
+        render();
+        break;
+    case "admin-delete":
+        void deleteAdminItem(target.dataset.collection ?? "", target.dataset.id ?? "");
+        break;
+    case "admin-logout":
+        void handleAdminLogout();
+        break;
     case "select-report-kind":
         state.selectedReportKind = target.dataset.kind ?? "issue";
         render();
@@ -457,11 +699,11 @@ function handleClick(event) { const target = event.target.closest("[data-route],
         render();
         break;
     case "gallery-next":
-        state.galleryIndex = (state.galleryIndex + 1) % galleryItems.length;
+        state.galleryIndex = (state.galleryIndex + 1) % allGalleryItems().length;
         render();
         break;
     case "gallery-prev":
-        state.galleryIndex = (state.galleryIndex - 1 + galleryItems.length) % galleryItems.length;
+        state.galleryIndex = (state.galleryIndex - 1 + allGalleryItems().length) % allGalleryItems().length;
         render();
         break;
     case "vote":
@@ -524,20 +766,37 @@ document.addEventListener("keydown", (event) => {
         render();
     }
     if (event.key === "ArrowRight") {
-        state.galleryIndex = (state.galleryIndex + 1) % galleryItems.length;
+        state.galleryIndex = (state.galleryIndex + 1) % allGalleryItems().length;
         render();
     }
     if (event.key === "ArrowLeft") {
-        state.galleryIndex = (state.galleryIndex - 1 + galleryItems.length) % galleryItems.length;
+        state.galleryIndex = (state.galleryIndex - 1 + allGalleryItems().length) % allGalleryItems().length;
         render();
     }
 });
-document.addEventListener("submit", (event) => { event.preventDefault(); const form = event.target; if (form.id === "global-search-form" || form.id === "search-page-form") {
+document.addEventListener("submit", (event) => { event.preventDefault(); const form = event.target; const formId = form.getAttribute("id"); if (formId === "global-search-form" || formId === "search-page-form") {
     state.searchQuery = readForm(form, "query");
     navigate("/search");
     return;
-} if (form.id === "tracker-form") {
+} if (formId === "tracker-form") {
     showTrackerResult(readForm(form, "reference"));
+}
+else if (formId === "admin-form") {
+    void handleAdminLogin(form);
+}
+else if (["admin-news-form", "admin-gallery-form", "admin-poll-form"].includes(formId)) {
+    const submitButton = form.querySelector("button[type=submit]");
+    const originalLabel = submitButton?.textContent ?? "Save";
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Saving…";
+    }
+    void handleAdminContentSubmit(form).catch((error) => showToast(error instanceof Error ? error.message : "The content could not be saved.", "error")).finally(() => {
+        if (submitButton?.isConnected) {
+            submitButton.disabled = false;
+            submitButton.textContent = originalLabel;
+        }
+    });
 }
 else {
     void handleSubmit(form);
@@ -549,6 +808,8 @@ document.addEventListener("input", (event) => { const target = event.target; if 
     search?.focus();
     search?.setSelectionRange(target.value.length, target.value.length);
 } });
-window.addEventListener("popstate", () => { state.route = currentRoute(); render(); });
-window.addEventListener("hashchange", () => { state.route = currentRoute(); render(); });
+window.addEventListener("popstate", () => { state.route = currentRoute(); render(); if ((state.route === "/admin" || state.route === "/login") && !state.admin.loading) void refreshAdminSession(); });
+window.addEventListener("hashchange", () => { state.route = currentRoute(); render(); if ((state.route === "/admin" || state.route === "/login") && !state.admin.loading) void refreshAdminSession(); });
 render();
+void loadPublicContent();
+if (state.route === "/admin" || state.route === "/login") void refreshAdminSession();

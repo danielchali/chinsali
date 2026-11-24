@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { createAppServer } from "./server.mjs";
+import { LocalContentStore } from "./content-store.mjs";
 import { EncryptedSubmissionStore, encryptionKeyFromBase64 } from "./storage.mjs";
 
 async function withServer(t, options = {}) {
@@ -14,6 +15,15 @@ async function withServer(t, options = {}) {
     server.close((error) => error ? reject(error) : resolve());
   }));
   return `http://127.0.0.1:${server.address().port}`;
+}
+
+async function withContentServer(t) {
+  const directory = await mkdtemp(join(tmpdir(), "chinsali-content-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  return withServer(t, {
+    contentStore: new LocalContentStore(join(directory, "content.json")),
+    adminPassword: "correct-horse-battery",
+  });
 }
 
 test("health reports configuration without exposing private data", async (t) => {
@@ -105,8 +115,10 @@ test("public submission reads and backend source files are not served", async (t
     fetch(`${baseUrl}/backend/server.mjs`),
     fetch(`${baseUrl}/README.md`),
     fetch(`${baseUrl}/`),
+    fetch(`${baseUrl}/admin`),
+    fetch(`${baseUrl}/login`),
   ]);
-  assert.deepEqual(requests.map((response) => response.status), [405, 404, 404, 200]);
+  assert.deepEqual(requests.map((response) => response.status), [405, 404, 404, 200, 200, 200]);
 });
 
 test("votes are sent to the cast_vote database function", async (t) => {
@@ -136,6 +148,123 @@ test("votes are sent to the cast_vote database function", async (t) => {
     p_option_id: "p1",
   });
   assert.equal(calls[0].options.headers.Authorization, "Bearer test-anon-key");
+});
+
+test("staff content management is authenticated and published content is the only public content", async (t) => {
+  const baseUrl = await withContentServer(t);
+  const unauthenticated = await fetch(`${baseUrl}/api/admin/overview`);
+  assert.equal(unauthenticated.status, 401);
+  const emptyPublicContent = await fetch(`${baseUrl}/api/content/public`);
+  assert.deepEqual(await emptyPublicContent.json(), { news: [], gallery: [] });
+
+  const login = await fetch(`${baseUrl}/api/admin/session`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: baseUrl },
+    body: JSON.stringify({ password: "correct-horse-battery" }),
+  });
+  assert.equal(login.status, 200);
+  const cookie = login.headers.get("set-cookie").split(";", 1)[0];
+  assert.match(login.headers.get("set-cookie"), /HttpOnly; SameSite=Strict/);
+  const headers = { cookie, origin: baseUrl, "content-type": "application/json" };
+
+  const draftNews = await fetch(`${baseUrl}/api/admin/content/news`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      title: "Mwika project update",
+      excerpt: "The public works team confirmed the latest project milestone.",
+      date: "2027-01-02",
+      tag: "Development update",
+      type: "update",
+      status: "draft",
+    }),
+  });
+  assert.equal(draftNews.status, 201);
+  const newsId = (await draftNews.json()).item.id;
+  assert.deepEqual((await (await fetch(`${baseUrl}/api/content/public`)).json()).news, []);
+
+  const publishedNews = await fetch(`${baseUrl}/api/admin/content/news/${newsId}`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({
+      title: "Mwika project update",
+      excerpt: "The public works team confirmed the latest project milestone.",
+      date: "2027-01-02",
+      tag: "Development update",
+      type: "update",
+      status: "published",
+    }),
+  });
+  assert.equal(publishedNews.status, 200);
+  assert.equal((await (await fetch(`${baseUrl}/api/content/public`)).json()).news[0].title, "Mwika project update");
+
+  const poll = await fetch(`${baseUrl}/api/admin/content/polls`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ question: "Which community priority should be discussed next?", closes: "2027-02-01", options: ["Water access", "Road maintenance"] }),
+  });
+  assert.equal(poll.status, 201);
+  assert.equal((await poll.json()).item.status, "draft");
+  assert.equal((await (await fetch(`${baseUrl}/api/content/public`)).json()).polls, undefined);
+
+  const upload = await fetch(`${baseUrl}/api/admin/uploads`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ contentType: "image/png", data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).toString("base64") }),
+  });
+  assert.equal(upload.status, 201);
+  const { image } = await upload.json();
+  const privateImage = await fetch(`${baseUrl}${image}`);
+  assert.equal(privateImage.status, 404);
+  assert.equal((await fetch(`${baseUrl}${image}`, { headers: { cookie } })).status, 200);
+
+  const gallery = await fetch(`${baseUrl}/api/admin/content/gallery`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ title: "Mwika water point", description: "A new community water point in Mwika.", category: "Community life", alt: "Recently drilled water point in Mwika", source: "District project team", status: "published", image }),
+  });
+  assert.equal(gallery.status, 201);
+  assert.equal((await fetch(`${baseUrl}${image}`)).status, 200);
+
+  const logout = await fetch(`${baseUrl}/api/admin/session`, { method: "DELETE", headers: { cookie, origin: baseUrl } });
+  assert.equal(logout.status, 204);
+  assert.equal((await fetch(`${baseUrl}/api/admin/overview`, { headers: { cookie } })).status, 401);
+  assert.equal((await fetch(`${baseUrl}/api/submissions`)).status, 405);
+});
+
+test("staff content writes require a same-origin request and image uploads reject mismatched types", async (t) => {
+  const baseUrl = await withContentServer(t);
+  const login = await fetch(`${baseUrl}/api/admin/session`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: baseUrl },
+    body: JSON.stringify({ password: "correct-horse-battery" }),
+  });
+  const cookie = login.headers.get("set-cookie").split(";", 1)[0];
+  const crossOrigin = await fetch(`${baseUrl}/api/admin/content/news`, {
+    method: "POST",
+    headers: { cookie, origin: "https://attacker.example", "content-type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  assert.equal(crossOrigin.status, 403);
+  const mismatchedImage = await fetch(`${baseUrl}/api/admin/uploads`, {
+    method: "POST",
+    headers: { cookie, origin: baseUrl, "content-type": "application/json" },
+    body: JSON.stringify({ contentType: "image/png", data: Buffer.from("not a png").toString("base64") }),
+  });
+  assert.equal(mismatchedImage.status, 400);
+});
+
+test("staff sign-in stays disabled without an explicit server password", async (t) => {
+  const baseUrl = await withServer(t);
+  const session = await fetch(`${baseUrl}/api/admin/session`);
+  assert.deepEqual(await session.json(), { authenticated: false });
+  const login = await fetch(`${baseUrl}/api/admin/session`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: baseUrl },
+    body: JSON.stringify({ password: "a-strong-password-for-testing" }),
+  });
+  assert.equal(login.status, 503);
+  assert.equal((await login.json()).error.includes("ADMIN_PASSWORD"), true);
 });
 
 test("rate limits write requests", async (t) => {

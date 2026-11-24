@@ -1,14 +1,26 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createServer as createHttpServer } from "node:http";
 import { extname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { LocalContentStore } from "./content-store.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const MAX_BODY_BYTES = 16 * 1024;
+const MAX_UPLOAD_BYTES = 7 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 const RATE_LIMIT = 12;
+const ADMIN_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+const CONTENT_COLLECTIONS = new Set(["news", "gallery", "polls"]);
+const NEWS_TYPES = new Set(["notice", "update", "event", "opportunity"]);
+const GALLERY_CATEGORIES = new Set(["Heritage", "Nature", "Town life", "Food and markets", "Community life"]);
+const IMAGE_TYPES = new Map([
+  ["image/jpeg", { extension: "jpg", contentType: "image/jpeg" }],
+  ["image/png", { extension: "png", contentType: "image/png" }],
+  ["image/webp", { extension: "webp", contentType: "image/webp" }],
+]);
 const USSD_SESSION_TTL_MS = 5 * 60 * 1000;
 const MAX_USSD_SESSIONS = 5000;
 const USSD_CATEGORIES = ["Water problems", "Roads and potholes", "Waste management", "Streetlights", "Other concern"];
@@ -43,13 +55,13 @@ function sendJson(response, status, value) {
   response.end(JSON.stringify(value));
 }
 
-async function readBody(request) {
+async function readBody(request, maxBytes = MAX_BODY_BYTES) {
   const contentType = request.headers["content-type"]?.split(";", 1)[0].trim().toLowerCase();
   const chunks = [];
   let bytes = 0;
   for await (const chunk of request) {
     bytes += chunk.length;
-    if (bytes > MAX_BODY_BYTES) {
+    if (bytes > maxBytes) {
       throw new HttpError(413, "The request is too large.");
     }
     chunks.push(chunk);
@@ -69,12 +81,114 @@ function parseJsonObject(body) {
   }
 }
 
-async function readJson(request) {
-  const { contentType, body } = await readBody(request);
+async function readJson(request, maxBytes = MAX_BODY_BYTES) {
+  const { contentType, body } = await readBody(request, maxBytes);
   if (contentType !== "application/json") {
     throw new HttpError(415, "Send the request as JSON.");
   }
   return parseJsonObject(body);
+}
+
+function validateImagePath(value, existing = "") {
+  if (value == null || value === "") return existing;
+  const imagePath = boundedText(value, "image", 80, { required: true });
+  if (!/^\/api\/media\/[\da-f-]{36}\.(?:jpg|png|webp)$/.test(imagePath)) {
+    throw new HttpError(400, "Choose an image uploaded through the staff portal.");
+  }
+  return imagePath;
+}
+
+function validateContentRecord(collection, input, existing = null) {
+  const id = existing?.id ?? randomUUID();
+  const createdAt = existing?.createdAt ?? new Date().toISOString();
+  if (collection === "news") {
+    const type = boundedText(input.type, "type", 20, { required: true });
+    if (!NEWS_TYPES.has(type)) throw new HttpError(400, "Choose a supported news type.");
+    const status = boundedText(input.status, "status", 16, { required: true });
+    if (!["draft", "published"].includes(status)) throw new HttpError(400, "Choose draft or published status.");
+    const image = validateImagePath(input.image, existing?.image ?? "");
+    const imageAlt = boundedText(input.imageAlt, "imageAlt", 240);
+    if (image && imageAlt.length < 5) throw new HttpError(400, "Add image description text for the attached news photo.");
+    return {
+      id,
+      createdAt,
+      title: boundedText(input.title, "title", 140, { required: true, minLength: 3 }),
+      excerpt: boundedText(input.excerpt, "excerpt", 800, { required: true, minLength: 10 }),
+      date: boundedText(input.date, "date", 40, { required: true }),
+      tag: boundedText(input.tag, "tag", 40, { required: true }),
+      type,
+      status,
+      image,
+      imageAlt,
+    };
+  }
+  if (collection === "gallery") {
+    const category = boundedText(input.category, "category", 40, { required: true });
+    if (!GALLERY_CATEGORIES.has(category)) throw new HttpError(400, "Choose a supported gallery category.");
+    const status = boundedText(input.status, "status", 16, { required: true });
+    if (!["draft", "published"].includes(status)) throw new HttpError(400, "Choose draft or published status.");
+    return {
+      id,
+      createdAt,
+      title: boundedText(input.title, "title", 140, { required: true, minLength: 3 }),
+      description: boundedText(input.description, "description", 800, { required: true, minLength: 10 }),
+      category,
+      alt: boundedText(input.alt, "alt", 240, { required: true, minLength: 5 }),
+      source: boundedText(input.source, "source", 200, { required: true, minLength: 2 }),
+      status,
+      image: validateImagePath(input.image, existing?.image ?? ""),
+    };
+  }
+  if (collection === "polls") {
+    const question = boundedText(input.question, "question", 240, { required: true, minLength: 10 });
+    const closes = boundedText(input.closes, "closes", 10, { required: true });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(closes) || Number.isNaN(Date.parse(`${closes}T00:00:00Z`))) {
+      throw new HttpError(400, "Choose a valid poll closing date.");
+    }
+    if (!Array.isArray(input.options) || input.options.length < 2 || input.options.length > 6) {
+      throw new HttpError(400, "A poll needs between 2 and 6 options.");
+    }
+    const labels = input.options.map((option) => boundedText(option, "option", 120, { required: true, minLength: 2 }));
+    if (new Set(labels.map((label) => label.toLowerCase())).size !== labels.length) {
+      throw new HttpError(400, "Poll options must be unique.");
+    }
+    return { id, createdAt, question, closes, options: labels, status: "draft" };
+  }
+  throw new HttpError(404, "Content collection not found.");
+}
+
+function cookieValue(request, name) {
+  const cookies = request.headers.cookie?.split(";") ?? [];
+  for (const cookie of cookies) {
+    const separator = cookie.indexOf("=");
+    if (separator >= 0 && cookie.slice(0, separator).trim() === name) return cookie.slice(separator + 1).trim();
+  }
+  return "";
+}
+
+function sameOriginRequest(request) {
+  const origin = request.headers.origin;
+  const host = request.headers.host;
+  if (typeof origin !== "string" || typeof host !== "string") return false;
+  try {
+    const parsed = new URL(origin);
+    return ["http:", "https:"].includes(parsed.protocol) && parsed.host === host;
+  } catch {
+    return false;
+  }
+}
+
+function passwordMatches(supplied, expected) {
+  const suppliedHash = createHash("sha256").update(supplied).digest();
+  const expectedHash = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(suppliedHash, expectedHash);
+}
+
+function matchesImageSignature(buffer, contentType) {
+  if (contentType === "image/jpeg") return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  if (contentType === "image/png") return buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (contentType === "image/webp") return buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP";
+  return false;
 }
 
 async function readUssdPayload(request) {
@@ -156,12 +270,12 @@ async function serveStatic(request, response, pathname, webRoot) {
     return;
   }
   const isAsset = decodedPath.startsWith("/assets/");
-  const allowedFile = new Set(["/", "/index.html", "/main.js", "/styles.css", "/ASSET-CREDITS.md"]);
+  const allowedFile = new Set(["/", "/admin", "/login", "/index.html", "/main.js", "/styles.css", "/ASSET-CREDITS.md"]);
   if (!isAsset && !allowedFile.has(decodedPath)) {
     sendJson(response, 404, { error: "Not found." });
     return;
   }
-  const target = resolve(webRoot, `.${decodedPath === "/" ? "/index.html" : decodedPath}`);
+  const target = resolve(webRoot, `.${["/", "/admin", "/login"].includes(decodedPath) ? "/index.html" : decodedPath}`);
   const pathFromRoot = relative(webRoot, target);
   const assetsRoot = resolve(webRoot, "assets");
   const pathFromAssets = relative(assetsRoot, target);
@@ -374,6 +488,9 @@ async function handleUssd(payload, {
 
 export function createAppServer({
   submissionsStore = null,
+  contentStore = null,
+  adminPassword = "",
+  secureAdminCookie = false,
   voteConfig = {},
   ussdServiceCode = "*388*133#",
   fetchImpl = globalThis.fetch,
@@ -385,7 +502,26 @@ export function createAppServer({
   const allowWrite = createRateLimiter({ limit: rateLimit, windowMs: rateWindowMs, now });
   const castVote = makeCastVote(voteConfig, fetchImpl);
   const ussdSessions = new Map();
+  const adminSessions = new Map();
   const clock = now ?? Date.now;
+  const adminCookie = (token, maxAge) => `my_chinsali_admin=${token}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=${maxAge}${secureAdminCookie ? "; Secure" : ""}`;
+  const authenticatedAdmin = (request) => {
+    const token = cookieValue(request, "my_chinsali_admin");
+    const expiresAt = adminSessions.get(token);
+    if (!token || !expiresAt) return false;
+    if (expiresAt <= clock()) {
+      adminSessions.delete(token);
+      return false;
+    }
+    return true;
+  };
+  const requireAdmin = (request) => {
+    if (!authenticatedAdmin(request)) throw new HttpError(401, "Sign in to use the staff portal.");
+  };
+  const requireAdminWrite = (request) => {
+    requireAdmin(request);
+    if (!sameOriginRequest(request)) throw new HttpError(403, "The request origin could not be verified.");
+  };
 
   return createHttpServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://localhost");
@@ -396,6 +532,159 @@ export function createAppServer({
           return;
         }
         sendJson(response, 200, { status: "ok", submissions: Boolean(submissionsStore), voting: Boolean(voteConfig.url && voteConfig.anonKey), ussd: Boolean(submissionsStore) });
+        return;
+      }
+
+      if (url.pathname === "/api/content/public") {
+        if (request.method !== "GET") {
+          sendJson(response, 405, { error: "Public content is read by GET only." });
+          return;
+        }
+        if (!contentStore) throw new HttpError(503, "The content service is not configured.");
+        sendJson(response, 200, await contentStore.publicContent());
+        return;
+      }
+
+      if (url.pathname === "/api/admin/session") {
+        if (request.method === "GET") {
+          sendJson(response, 200, { authenticated: authenticatedAdmin(request) });
+          return;
+        }
+        if (request.method === "POST") {
+          if (!sameOriginRequest(request)) throw new HttpError(403, "The request origin could not be verified.");
+          if (!allowWrite(`admin-login:${request.socket.remoteAddress}`)) {
+            throw new HttpError(429, "Too many sign-in attempts. Please try again later.");
+          }
+          if (adminPassword.length < 12) {
+            throw new HttpError(503, "Staff sign-in is not configured. Set ADMIN_PASSWORD to a strong password of at least 12 characters.");
+          }
+          const input = await readJson(request);
+          if (typeof input.password !== "string" || input.password.length < 12 || input.password.length > 256) {
+            throw new HttpError(400, "password must be 12-256 characters.");
+          }
+          const password = input.password;
+          if (!passwordMatches(password, adminPassword)) throw new HttpError(401, "The password was not accepted.");
+          const token = randomBytes(32).toString("base64url");
+          adminSessions.set(token, clock() + ADMIN_SESSION_TTL_MS);
+          response.setHeader("Set-Cookie", adminCookie(token, ADMIN_SESSION_TTL_MS / 1000));
+          sendJson(response, 200, { authenticated: true });
+          return;
+        }
+        if (request.method === "DELETE") {
+          if (!sameOriginRequest(request)) throw new HttpError(403, "The request origin could not be verified.");
+          adminSessions.delete(cookieValue(request, "my_chinsali_admin"));
+          response.writeHead(204, {
+            "Cache-Control": "no-store",
+            "Set-Cookie": adminCookie("", 0),
+            "X-Content-Type-Options": "nosniff",
+          });
+          response.end();
+          return;
+        }
+        sendJson(response, 405, { error: "Method not allowed." });
+        return;
+      }
+
+      if (url.pathname.startsWith("/api/admin/")) {
+        requireAdmin(request);
+        if (url.pathname === "/api/admin/overview" && request.method === "GET") {
+          if (!contentStore) throw new HttpError(503, "The content service is not configured.");
+          sendJson(response, 200, await contentStore.overview());
+          return;
+        }
+
+        const contentMatch = url.pathname.match(/^\/api\/admin\/content\/(news|gallery|polls)(?:\/([\da-f-]{36}))?$/);
+        if (contentMatch) {
+          const [, collection, id] = contentMatch;
+          if (!contentStore) throw new HttpError(503, "The content service is not configured.");
+          if (request.method === "GET" && !id) {
+            sendJson(response, 200, { items: await contentStore.list(collection) });
+            return;
+          }
+          if (request.method === "POST" && !id) {
+            requireAdminWrite(request);
+            if (!allowWrite(`admin-content:${request.socket.remoteAddress}`)) throw new HttpError(429, "Too many changes. Please try again later.");
+            const record = validateContentRecord(collection, await readJson(request));
+            sendJson(response, 201, { item: await contentStore.create(collection, record) });
+            return;
+          }
+          if (request.method === "PUT" && id) {
+            requireAdminWrite(request);
+            if (!allowWrite(`admin-content:${request.socket.remoteAddress}`)) throw new HttpError(429, "Too many changes. Please try again later.");
+            const existing = (await contentStore.list(collection)).find((item) => item.id === id);
+            if (!existing) throw new HttpError(404, "Content item not found.");
+            const record = validateContentRecord(collection, await readJson(request), existing);
+            sendJson(response, 200, { item: await contentStore.update(collection, id, record) });
+            return;
+          }
+          if (request.method === "DELETE" && id) {
+            requireAdminWrite(request);
+            if (!allowWrite(`admin-content:${request.socket.remoteAddress}`)) throw new HttpError(429, "Too many changes. Please try again later.");
+            if (!(await contentStore.remove(collection, id))) throw new HttpError(404, "Content item not found.");
+            response.writeHead(204, { "Cache-Control": "no-store" });
+            response.end();
+            return;
+          }
+          sendJson(response, 405, { error: "Method not allowed." });
+          return;
+        }
+
+        if (url.pathname === "/api/admin/uploads" && request.method === "POST") {
+          requireAdminWrite(request);
+          if (!contentStore) throw new HttpError(503, "The content service is not configured.");
+          if (!allowWrite(`admin-upload:${request.socket.remoteAddress}`)) throw new HttpError(429, "Too many uploads. Please try again later.");
+          const input = await readJson(request, MAX_UPLOAD_BYTES);
+          const contentType = boundedText(input.contentType, "contentType", 40, { required: true });
+          const imageType = IMAGE_TYPES.get(contentType);
+          if (!imageType) throw new HttpError(415, "Upload a JPEG, PNG or WebP image.");
+          const encoded = boundedText(input.data, "data", MAX_UPLOAD_BYTES, { required: true });
+          if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) {
+            throw new HttpError(400, "The image data is not valid base64.");
+          }
+          const image = Buffer.from(encoded, "base64");
+          if (image.length > MAX_IMAGE_BYTES || image.toString("base64") !== encoded) {
+            throw new HttpError(413, "Images must be 5 MB or smaller.");
+          }
+          if (!matchesImageSignature(image, contentType)) throw new HttpError(400, "The image contents do not match the selected file type.");
+          const filename = `${randomUUID()}.${imageType.extension}`;
+          await contentStore.saveUpload(filename, image);
+          sendJson(response, 201, { image: `/api/media/${filename}` });
+          return;
+        }
+
+        const uploadMatch = url.pathname.match(/^\/api\/admin\/uploads\/([\da-f-]{36}\.(?:jpg|png|webp))$/);
+        if (uploadMatch && request.method === "DELETE") {
+          requireAdminWrite(request);
+          if (!contentStore) throw new HttpError(503, "The content service is not configured.");
+          await contentStore.deleteUnusedUpload(uploadMatch[1]);
+          response.writeHead(204, { "Cache-Control": "no-store" });
+          response.end();
+          return;
+        }
+        sendJson(response, 404, { error: "Not found." });
+        return;
+      }
+
+      const mediaMatch = url.pathname.match(/^\/api\/media\/([\da-f-]{36}\.(?:jpg|png|webp))$/);
+      if (mediaMatch) {
+        if (request.method !== "GET" && request.method !== "HEAD") {
+          sendJson(response, 405, { error: "Media is read by GET only." });
+          return;
+        }
+        if (!contentStore) throw new HttpError(404, "Not found.");
+        const isAdmin = authenticatedAdmin(request);
+        const imagePath = url.pathname;
+        if (!isAdmin && !(await contentStore.isPublishedImage(imagePath))) throw new HttpError(404, "Not found.");
+        const image = await contentStore.readUpload(mediaMatch[1]);
+        if (!image) throw new HttpError(404, "Not found.");
+        const imageType = IMAGE_TYPES.get(`image/${mediaMatch[1].endsWith(".jpg") ? "jpeg" : mediaMatch[1].endsWith(".png") ? "png" : "webp"}`);
+        response.writeHead(200, {
+          "Cache-Control": isAdmin ? "private, no-store" : "public, max-age=300",
+          "Content-Length": image.length,
+          "Content-Type": imageType.contentType,
+          "X-Content-Type-Options": "nosniff",
+        });
+        response.end(request.method === "HEAD" ? undefined : image);
         return;
       }
 
@@ -489,6 +778,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     : null;
   const server = createAppServer({
     submissionsStore,
+    contentStore: new LocalContentStore(resolve(ROOT, "backend/data/content.json")),
+    adminPassword: process.env.ADMIN_PASSWORD ?? "",
+    secureAdminCookie: process.env.ADMIN_COOKIE_SECURE === "1",
     voteConfig: {
       url: process.env.SUPABASE_URL,
       anonKey: process.env.SUPABASE_ANON_KEY,
@@ -502,6 +794,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     if (!submissionsStore) console.warn("Resident submissions disabled: set SUBMISSION_ENCRYPTION_KEY.");
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
       console.warn("Online voting disabled: configure SUPABASE_URL and SUPABASE_ANON_KEY.");
+    }
+    if (!process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD.length < 12) {
+      console.warn("Staff portal disabled: set ADMIN_PASSWORD to a strong password of at least 12 characters.");
     }
   });
 }
