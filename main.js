@@ -250,14 +250,26 @@ function renderPage() { switch (state.route) {
     case "/admin": return renderAdmin();
     default: return renderHome();
 } }
-function render() { const app = document.querySelector("#app"); if (!app)
-    return; document.documentElement.dataset.theme = state.theme; document.body.classList.toggle("mobile-menu-open", state.mobileOpen); landmarkMap?.remove(); landmarkMap = null; document.title = `${state.route === "/" ? "My Chinsali" : `${state.route.slice(1).replaceAll("-", " ")} · My Chinsali`}`; app.innerHTML = `${renderHeader()}${renderPage()}${renderFooter()}${state.toastTimer ? "" : ""}`; initLandmarkMap(); if (state.modalService)
+function render(options = {}) { const app = document.querySelector("#app"); if (!app)
+    return; document.documentElement.dataset.theme = state.theme; document.body.classList.toggle("mobile-menu-open", state.mobileOpen); landmarkMap?.remove(); landmarkMap = null; document.title = `${state.route === "/" ? "My Chinsali" : `${state.route.slice(1).replaceAll("-", " ")} · My Chinsali`}`; app.innerHTML = `${renderHeader()}${renderPage()}${renderFooter()}${state.toastTimer ? "" : ""}`; initLandmarkMap(); if (options.transition) {
+    app.classList.remove("route-exit");
+    app.classList.add("route-enter");
+    window.setTimeout(() => app.classList.remove("route-enter"), 360);
+}
+if (state.modalService)
     document.body.classList.add("modal-open");
 else
     document.body.classList.remove("modal-open"); }
 function showToast(message, tone = "success") { const existing = document.querySelector(".toast"); existing?.remove(); const toast = document.createElement("div"); toast.className = `toast toast-${tone}`; toast.innerHTML = `${tone === "success" ? icon("check") : icon("alert")}<span>${esc(message)}</span>`; document.body.append(toast); if (state.toastTimer)
     window.clearTimeout(state.toastTimer); state.toastTimer = window.setTimeout(() => toast.remove(), 4200); }
-function navigate(route) { const next = normalizeRoute(route); state.route = next; state.mobileOpen = false; state.modalService = null; window.history.pushState({}, "", `#${next}`); render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+function navigate(route) { const next = normalizeRoute(route); if (next === state.route) {
+    state.mobileOpen = false;
+    render();
+    return;
+} const app = document.querySelector("#app"); const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches; const commit = () => { state.route = next; state.mobileOpen = false; state.modalService = null; window.history.pushState({}, "", `#${next}`); render({ transition: !reducedMotion }); window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" }); }; if (!app || reducedMotion) {
+    commit();
+    return;
+} app.classList.remove("route-enter"); app.classList.add("route-exit"); window.setTimeout(commit, 150); }
 function cycleWard() { const index = WARDS.indexOf(state.ward); state.ward = WARDS[(index + 1) % WARDS.length] ?? WARDS[0]; localStorage.setItem("my-chinsali-ward", state.ward); render(); showToast(`Community view changed to ${state.ward}.`); }
 async function submitPublicRecord(payload) {
     const saveLocally = () => {
@@ -549,6 +561,11 @@ document.addEventListener("input", (event) => { const target = event.target; if 
     search?.focus();
     search?.setSelectionRange(target.value.length, target.value.length);
 } });
-window.addEventListener("popstate", () => { state.route = currentRoute(); render(); });
-window.addEventListener("hashchange", () => { state.route = currentRoute(); render(); });
+function renderHistoryRoute() { const next = currentRoute(); const app = document.querySelector("#app"); const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches; if (!app || reducedMotion) {
+    state.route = next;
+    render();
+    return;
+} app.classList.remove("route-enter"); app.classList.add("route-exit"); window.setTimeout(() => { state.route = next; render({ transition: true }); window.scrollTo({ top: 0, behavior: "smooth" }); }, 150); }
+window.addEventListener("popstate", renderHistoryRoute);
+window.addEventListener("hashchange", renderHistoryRoute);
 render();
