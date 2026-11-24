@@ -642,7 +642,8 @@ html[data-theme="dark"] .story-hero-overlay { background: linear-gradient(90deg,
   .story-hero h1 { font-size: clamp(3.35rem, 16vw, 5.4rem); }
   .story-hero-copy-slides { min-height: 175px; }
   .story-hero-copy-slide p:not(.eyebrow) { font-size: .82rem; }
-  .story-hero-actions { max-width: 390px; }
+  .story-hero-actions { justify-self: center; max-width: 390px; text-align: center; }
+  .story-quick-actions { text-align: left; }
   .story-hero-scroll { margin-top: 25px; padding-top: 0; }
   .story-hero-dots { right: 18px; bottom: 20px; }
   .story-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
@@ -1652,4 +1653,58 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .admin-item-actions { flex-direction: row; }
   .admin-gate { grid-template-columns: 1fr; }
   .admin-gate .admin-form { grid-template-columns: 1fr; }
+}
+
+/* Micro-interactions and route motion */
+#app { min-height: 100vh; will-change: opacity, transform; }
+#app.route-exit { opacity: 0; transform: translateY(7px); transition: opacity 150ms ease, transform 150ms ease; pointer-events: none; }
+#app.route-enter { animation: route-enter 360ms cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes route-enter {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.site-header, .utility-bar { transition: background-color .22s ease, border-color .22s ease, box-shadow .22s ease; }
+.main-nav a, .nav-dropdown-toggle, .header-help, .theme-toggle, .mobile-menu, .mobile-nav-close, .filter-chip, .faq-item button, .gallery-card, .kind-card, .map-filter, .poll-option, .service-link, .text-button { transition: color .16s ease, background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+.main-nav a:active, .nav-dropdown-toggle:active, .header-help:active, .theme-toggle:active, .mobile-menu:active, .mobile-nav-close:active, .filter-chip:active, .faq-item button:active, .kind-card:active, .map-filter:active, .poll-option:active { transform: scale(.97); }
+
+.button { position: relative; overflow: hidden; }
+.button::after { position: absolute; inset: 0; background: rgba(255,255,255,.16); content: ""; opacity: 0; transform: scale(.55); transition: opacity .22s ease, transform .22s ease; pointer-events: none; }
+.button:active::after { opacity: 1; transform: scale(1.35); transition-duration: .08s; }
+.button > * { position: relative; z-index: 1; }
+.button-primary:focus-visible, .button-secondary:focus-visible, .button-ghost:focus-visible { box-shadow: var(--shadow-focus), 0 5px 13px rgba(17,42,29,.09); }
+
+.quick-link-card, .action-card, .project-card, .service-card, .story-card, .search-result-card, .gallery-card, .memory-card, .side-card, .poll-card { will-change: transform; }
+.quick-link-card:active, .action-card:active, .project-card:active, .service-card:active, .story-card:active, .search-result-card:active, .gallery-card:active, .side-card:active, .poll-card:active { transform: translateY(0) scale(.988); box-shadow: var(--shadow-small); }
+.story-card-image, .gallery-card-image, .hero-visual { overflow: hidden; }
+.story-card-image img, .gallery-card img, .hero-visual img { transition: transform .42s cubic-bezier(.22,1,.36,1), filter .22s ease; }
+.story-card:hover .story-card-image img, .gallery-card:hover img { transform: scale(1.045); filter: saturate(1.04); }
+
+.mobile-nav-overlay { animation: overlay-in 220ms ease both; }
+.mobile-nav-backdrop { animation: backdrop-in 220ms ease both; }
+.mobile-nav { animation: drawer-in 280ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drawer-in { from { opacity: .65; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
+.mobile-nav > a, .mobile-nav .nav-dropdown, .mobile-nav .button { animation: drawer-item-in 300ms cubic-bezier(.22,1,.36,1) both; }
+.mobile-nav > a:nth-of-type(1) { animation-delay: 35ms; }
+.mobile-nav > a:nth-of-type(2) { animation-delay: 55ms; }
+.mobile-nav > a:nth-of-type(3) { animation-delay: 75ms; }
+.mobile-nav > a:nth-of-type(4) { animation-delay: 95ms; }
+@keyframes drawer-item-in { from { opacity: 0; transform: translateX(-7px); } to { opacity: 1; transform: translateX(0); } }
+
+.modal-backdrop { animation: overlay-in 180ms ease both; }
+.modal-card, .gallery-lightbox-card { animation: modal-in 260ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes modal-in { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.toast { animation: toast-in 240ms cubic-bezier(.22,1,.36,1) both; }
+
+.progress-track span, .poll-track span { transform-origin: left center; animation: progress-in 600ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes progress-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.status, .tone-green, .tone-orange, .tone-blue { transition: background-color .18s ease, color .18s ease, border-color .18s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  #app, #app.route-exit, #app.route-enter { opacity: 1; transform: none; animation: none; transition: none; }
+  .mobile-nav-overlay, .mobile-nav-backdrop, .mobile-nav, .mobile-nav > a, .mobile-nav .nav-dropdown, .mobile-nav .button, .modal-backdrop, .modal-card, .gallery-lightbox-card, .toast, .progress-track span, .poll-track span { animation: none; }
+  .button::after { display: none; }
+  .story-card-image img, .gallery-card img { transition: none; }
 }
