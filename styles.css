@@ -1594,15 +1594,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .admin-page { max-width: 1240px; }
 .admin-page > .page-intro { margin-bottom: 25px; }
 
-.admin-login-page { max-width: 760px; }
-.admin-login-card { display: grid; max-width: 530px; gap: 12px; margin: 30px auto 0; padding: 28px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-small); }
+.admin-login-page { max-width: 920px; padding-top: clamp(48px, 8vw, 88px); }
+.admin-login-page > .page-intro { align-items: center; flex-direction: column; gap: 14px; max-width: 650px; margin-inline: auto; padding-bottom: 20px; text-align: center; }
+.admin-login-page > .page-intro > div { flex: none; }
+.admin-login-page > .page-intro .lede { max-width: 430px; margin-inline: auto; }
+.admin-login-page > .page-intro .text-button { margin: 0; }
+.admin-login-card { display: grid; max-width: 430px; gap: 15px; margin: 28px auto 0; padding: 30px; border: 1px solid var(--line); border-top: 3px solid var(--green); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow); }
 .admin-login-card .admin-gate-mark { margin-bottom: 2px; }
 .admin-login-card > .eyebrow { margin: 0; color: var(--green); }
 .admin-login-card h2 { margin: 0; font-size: 1.8rem; letter-spacing: -.05em; }
 .admin-login-card > p:not(.eyebrow):not(.small-note) { margin: 0; color: var(--ink-soft); font-size: .79rem; line-height: 1.6; }
 .admin-login-form { display: grid; gap: 13px; margin-top: 5px; }
 .admin-login-form .button { width: 100%; }
-.admin-login-card .small-note { margin: 0; }
+.admin-login-card .small-note { margin: 0; padding-top: 13px; border-top: 1px solid var(--line); line-height: 1.5; }
 .admin-gate { grid-template-columns: 51px minmax(0, 1fr); }
 .admin-gate .admin-form { grid-template-columns: minmax(0, 420px) auto; }
 .admin-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0; }
