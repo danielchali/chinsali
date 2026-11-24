@@ -642,7 +642,8 @@ html[data-theme="dark"] .story-hero-overlay { background: linear-gradient(90deg,
   .story-hero h1 { font-size: clamp(3.35rem, 16vw, 5.4rem); }
   .story-hero-copy-slides { min-height: 175px; }
   .story-hero-copy-slide p:not(.eyebrow) { font-size: .82rem; }
-  .story-hero-actions { max-width: 390px; }
+  .story-hero-actions { justify-self: center; max-width: 390px; text-align: center; }
+  .story-quick-actions { text-align: left; }
   .story-hero-scroll { margin-top: 25px; padding-top: 0; }
   .story-hero-dots { right: 18px; bottom: 20px; }
   .story-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
