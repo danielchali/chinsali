@@ -122,6 +122,92 @@ test("public submission reads and backend source files are not served", async (t
   assert.deepEqual(requests.map((response) => response.status), [405, 404, 404, 200, 200, 200]);
 });
 
+test("staff can review encrypted submissions without exposing them publicly", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "chinsali-submissions-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const submissionsStore = new EncryptedSubmissionStore(join(directory, "submissions.jsonl"), randomBytes(32));
+  await submissionsStore.save({
+    reference: "MC-ISSUE",
+    receivedAt: "2026-11-25T10:00:00.000Z",
+    submission: { kind: "issue", details: "Broken water point near the clinic.", ward: "Mwika", category: "Water", phone: "+260971234567", anonymous: false },
+  });
+  await submissionsStore.save({
+    reference: "PROP-IDEA",
+    receivedAt: "2026-11-25T11:00:00.000Z",
+    submission: { kind: "proposal", details: "Build a community learning centre.", ward: "Lubwa", category: "Education", phone: "", anonymous: true },
+  });
+  const baseUrl = await withServer(t, {
+    submissionsStore,
+    adminUsername: "staff",
+    adminPassword: "correct-horse-battery",
+  });
+
+  const unauthorized = await fetch(`${baseUrl}/api/admin/submissions?kind=reports`);
+  assert.equal(unauthorized.status, 401);
+  const login = await fetch(`${baseUrl}/api/admin/session`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: baseUrl },
+    body: JSON.stringify({ username: "staff", password: "correct-horse-battery" }),
+  });
+  const cookie = login.headers.get("set-cookie").split(";", 1)[0];
+  const headers = { cookie };
+  const reports = await fetch(`${baseUrl}/api/admin/submissions?kind=reports`, { headers });
+  assert.equal(reports.status, 200);
+  assert.equal(reports.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await reports.json(), {
+    items: [{
+      reference: "MC-ISSUE",
+      receivedAt: "2026-11-25T10:00:00.000Z",
+      submission: { kind: "issue", details: "Broken water point near the clinic.", ward: "Mwika", category: "Water", phone: "+260971234567", anonymous: false },
+    }],
+    total: 1,
+  });
+  const other = await fetch(`${baseUrl}/api/admin/submissions?kind=submissions`, { headers });
+  assert.equal((await other.json()).items[0].reference, "PROP-IDEA");
+  const publicRead = await fetch(`${baseUrl}/api/submissions`);
+  assert.equal(publicRead.status, 405);
+  assert.doesNotMatch(await publicRead.text(), /clinic|971234567/);
+});
+
+test("staff can close portal voting and reopen it", async (t) => {
+  const baseUrl = await withContentServer(t);
+  const login = await fetch(`${baseUrl}/api/admin/session`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: baseUrl },
+    body: JSON.stringify({ username: "staff", password: "correct-horse-battery" }),
+  });
+  const cookie = login.headers.get("set-cookie").split(";", 1)[0];
+  const headers = { cookie, origin: baseUrl, "content-type": "application/json" };
+
+  const invalid = await fetch(`${baseUrl}/api/admin/settings`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ pollsOpen: "false" }),
+  });
+  assert.equal(invalid.status, 400);
+  const closed = await fetch(`${baseUrl}/api/admin/settings`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ pollsOpen: false }),
+  });
+  assert.deepEqual(await closed.json(), { pollsOpen: false });
+  assert.equal((await (await fetch(`${baseUrl}/api/content/public`)).json()).pollsOpen, false);
+  const blockedVote = await fetch(`${baseUrl}/api/votes`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ pollId: "priority-2027", optionId: "p1" }),
+  });
+  assert.equal(blockedVote.status, 403);
+
+  const reopened = await fetch(`${baseUrl}/api/admin/settings`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ pollsOpen: true }),
+  });
+  assert.deepEqual(await reopened.json(), { pollsOpen: true });
+  assert.equal((await (await fetch(`${baseUrl}/api/content/public`)).json()).pollsOpen, true);
+});
+
 test("votes are sent to the cast_vote database function", async (t) => {
   const calls = [];
   const baseUrl = await withServer(t, {
@@ -156,7 +242,7 @@ test("staff content management is authenticated and published content is the onl
   const unauthenticated = await fetch(`${baseUrl}/api/admin/overview`);
   assert.equal(unauthenticated.status, 401);
   const emptyPublicContent = await fetch(`${baseUrl}/api/content/public`);
-  assert.deepEqual(await emptyPublicContent.json(), { news: [], gallery: [] });
+  assert.deepEqual(await emptyPublicContent.json(), { news: [], gallery: [], pollsOpen: true });
 
   const wrongUsername = await fetch(`${baseUrl}/api/admin/session`, {
     method: "POST",

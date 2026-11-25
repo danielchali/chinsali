@@ -1,5 +1,7 @@
-import { createCipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { appendFile, mkdir } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { createInterface } from "node:readline";
 import { dirname } from "node:path";
 
 export function encryptionKeyFromBase64(value) {
@@ -20,6 +22,56 @@ export class EncryptedSubmissionStore {
     }
     this.filePath = filePath;
     this.key = key;
+  }
+
+  async listRecent({ kind, limit = 50 } = {}) {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new Error("Submission list limit must be between 1 and 100.");
+    }
+    if (kind && !["issue", "other"].includes(kind)) {
+      throw new Error("Unknown submission filter.");
+    }
+
+    const records = [];
+    let total = 0;
+    try {
+      const lines = createInterface({ input: createReadStream(this.filePath, { encoding: "utf8" }), crlfDelay: Infinity });
+      for await (const line of lines) {
+        if (!line.trim()) continue;
+        const envelope = JSON.parse(line);
+        const record = this.#decrypt(envelope);
+        const submissionKind = record?.submission?.kind;
+        if (kind === "issue" && submissionKind !== "issue") continue;
+        if (kind === "other" && submissionKind === "issue") continue;
+        total += 1;
+        records.push(record);
+        if (records.length > limit) records.shift();
+      }
+    } catch (error) {
+      if (error?.code === "ENOENT") return { items: [], total: 0 };
+      throw new Error("Encrypted submission records could not be read.", { cause: error });
+    }
+    return { items: records.reverse(), total };
+  }
+
+  #decrypt(envelope) {
+    if (!envelope || envelope.version !== 1) {
+      throw new Error("Invalid encrypted submission record.");
+    }
+    const iv = Buffer.from(envelope.iv, "base64");
+    const tag = Buffer.from(envelope.tag, "base64");
+    const ciphertext = Buffer.from(envelope.ciphertext, "base64");
+    if (iv.length !== 12 || tag.length !== 16 || !ciphertext.length) {
+      throw new Error("Invalid encrypted submission record.");
+    }
+    const decipher = createDecipheriv("aes-256-gcm", this.key, iv);
+    decipher.setAuthTag(tag);
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    const record = JSON.parse(plaintext.toString("utf8"));
+    if (!record || typeof record.reference !== "string" || typeof record.receivedAt !== "string" || !record.submission || typeof record.submission !== "object") {
+      throw new Error("Invalid decrypted submission record.");
+    }
+    return record;
   }
 
   save(record) {

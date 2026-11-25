@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const EMPTY_CONTENT = { news: [], gallery: [], polls: [] };
+const EMPTY_CONTENT = { news: [], gallery: [], polls: [], settings: { pollsOpen: true } };
 const COLLECTIONS = new Set(Object.keys(EMPTY_CONTENT));
 const DEFAULT_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "data/content.json");
 
@@ -38,10 +38,14 @@ export class LocalContentStore {
     } catch {
       throw new Error("The local content file is not valid JSON.");
     }
-    if (!data || typeof data !== "object" || Object.keys(EMPTY_CONTENT).some(
+    if (!data || typeof data !== "object" || ["news", "gallery", "polls"].some(
       (key) => !Array.isArray(data[key]) || data[key].some((item) => !item || typeof item !== "object" || Array.isArray(item)),
     )) {
       throw new Error("The local content file has an invalid structure.");
+    }
+    if (data.settings == null) data.settings = structuredClone(EMPTY_CONTENT.settings);
+    if (typeof data.settings !== "object" || Array.isArray(data.settings) || typeof data.settings.pollsOpen !== "boolean") {
+      throw new Error("The local content settings have an invalid structure.");
     }
     return data;
   }
@@ -70,8 +74,26 @@ export class LocalContentStore {
       return {
         news: structuredClone(data.news.filter((item) => item.status === "published")),
         gallery: structuredClone(data.gallery.filter((item) => item.status === "published")),
+        pollsOpen: data.settings.pollsOpen,
       };
     });
+  }
+
+  settings() {
+    return this.#enqueue(async () => structuredClone((await this.#read()).settings));
+  }
+
+  updateSettings(settings) {
+    return this.#enqueue(async () => {
+      const data = await this.#read();
+      data.settings = structuredClone(settings);
+      await this.#write(data);
+      return structuredClone(data.settings);
+    });
+  }
+
+  pollsOpen() {
+    return this.#enqueue(async () => (await this.#read()).settings.pollsOpen);
   }
 
   overview() {

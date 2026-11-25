@@ -236,6 +236,13 @@ function validateSubmission(input) {
   return { kind, title, details, ward, category, phone, contact, anonymous };
 }
 
+function validateAdminSettings(input) {
+  if (typeof input.pollsOpen !== "boolean") {
+    throw new HttpError(400, "pollsOpen must be true or false.");
+  }
+  return { pollsOpen: input.pollsOpen };
+}
+
 function createRateLimiter({ limit = RATE_LIMIT, windowMs = RATE_WINDOW_MS, now = Date.now } = {}) {
   const requests = new Map();
   return (key) => {
@@ -270,12 +277,13 @@ async function serveStatic(request, response, pathname, webRoot) {
     return;
   }
   const isAsset = decodedPath.startsWith("/assets/");
-  const allowedFile = new Set(["/", "/admin", "/login", "/index.html", "/main.js", "/styles.css", "/ASSET-CREDITS.md"]);
+  const spaRoutes = new Set(["/", "/search", "/services", "/community", "/propose", "/report", "/whistleblowing", "/tracker", "/map", "/gallery", "/polls", "/news", "/help", "/admin", "/login"]);
+  const allowedFile = new Set([...spaRoutes, "/index.html", "/main.js", "/styles.css", "/ASSET-CREDITS.md", "/MAP-SOURCES.md"]);
   if (!isAsset && !allowedFile.has(decodedPath)) {
     sendJson(response, 404, { error: "Not found." });
     return;
   }
-  const target = resolve(webRoot, `.${["/", "/admin", "/login"].includes(decodedPath) ? "/index.html" : decodedPath}`);
+  const target = resolve(webRoot, `.${spaRoutes.has(decodedPath) ? "/index.html" : decodedPath}`);
   const pathFromRoot = relative(webRoot, target);
   const assetsRoot = resolve(webRoot, "assets");
   const pathFromAssets = relative(assetsRoot, target);
@@ -591,6 +599,42 @@ export function createAppServer({
 
       if (url.pathname.startsWith("/api/admin/")) {
         requireAdmin(request);
+        if (url.pathname === "/api/admin/settings") {
+          if (!contentStore) throw new HttpError(503, "The content service is not configured.");
+          if (request.method === "GET") {
+            sendJson(response, 200, await contentStore.settings());
+            return;
+          }
+          if (request.method === "PUT") {
+            requireAdminWrite(request);
+            if (!allowWrite(`admin-settings:${request.socket.remoteAddress}`)) throw new HttpError(429, "Too many changes. Please try again later.");
+            const settings = validateAdminSettings(await readJson(request));
+            sendJson(response, 200, await contentStore.updateSettings(settings));
+            return;
+          }
+          sendJson(response, 405, { error: "Method not allowed." });
+          return;
+        }
+
+        if (url.pathname === "/api/admin/submissions") {
+          if (request.method !== "GET") {
+            sendJson(response, 405, { error: "Resident submissions are read-only." });
+            return;
+          }
+          if (!submissionsStore || typeof submissionsStore.listRecent !== "function") {
+            throw new HttpError(503, "Encrypted submission review is not configured.");
+          }
+          const kind = url.searchParams.get("kind") ?? "all";
+          const kindFilter = kind === "reports" ? "issue" : kind === "submissions" ? "other" : undefined;
+          if (kind !== "all" && !kindFilter) throw new HttpError(400, "Choose reports or submissions.");
+          const limitValue = url.searchParams.get("limit") ?? "50";
+          if (!/^\d{1,3}$/.test(limitValue) || Number(limitValue) < 1 || Number(limitValue) > 100) {
+            throw new HttpError(400, "The list limit must be between 1 and 100.");
+          }
+          sendJson(response, 200, await submissionsStore.listRecent({ kind: kindFilter, limit: Number(limitValue) }));
+          return;
+        }
+
         if (url.pathname === "/api/admin/overview" && request.method === "GET") {
           if (!contentStore) throw new HttpError(503, "The content service is not configured.");
           sendJson(response, 200, await contentStore.overview());
@@ -749,6 +793,9 @@ export function createAppServer({
         if (!allowWrite(`vote:${request.socket.remoteAddress}`)) {
           sendJson(response, 429, { error: "Too many votes. Please try again later." });
           return;
+        }
+        if (contentStore && !(await contentStore.pollsOpen())) {
+          throw new HttpError(403, "Voting is closed.");
         }
         const input = await readJson(request);
         const pollId = boundedText(input.pollId, "pollId", 100, { required: true });

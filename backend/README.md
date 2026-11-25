@@ -19,11 +19,11 @@ Online voting is optional. Configure the Supabase project URL and public anon ke
 
 ## Local staff publishing workspace
 
-Set `ADMIN_USERNAME` and a unique `ADMIN_PASSWORD` of at least 12 characters in the same shell before starting the server. If omitted, the local username defaults to `admin`. Staff sign in at `/login`; authenticated users are redirected to the protected `/admin` workspace for editorial dashboards, news creation/editing, photo uploads, gallery publishing and poll drafts. `ADMIN_COOKIE_SECURE=1` enables the Secure cookie flag when running behind HTTPS. The backend still binds to loopback; these settings do not make it production-ready.
+Set `ADMIN_USERNAME` and a unique `ADMIN_PASSWORD` of at least 12 characters in the same shell before starting the server. If omitted, the local username defaults to `admin`. Staff sign in at `/login`; authenticated users are redirected to the protected `/admin` workspace for editorial dashboards, news and gallery management, resident reports and submissions, poll drafts, and portal settings. Resident records are read-only in the dashboard. The poll setting closes or reopens votes submitted through this portal. `ADMIN_COOKIE_SECURE=1` enables the Secure cookie flag when running behind HTTPS. The backend still binds to loopback; these settings do not make it production-ready.
 
-Editorial content is stored in the Git-ignored `backend/data/content.json`; uploaded images are stored under `backend/data/uploads/`. The public site receives only published news and gallery entries through `GET /api/content/public`. Draft images are not served publicly. Image uploads are limited to JPEG, PNG and WebP files up to 5 MB.
+Editorial content and the portal poll setting are stored in the Git-ignored `backend/data/content.json`; uploaded images are stored under `backend/data/uploads/`. The public site receives only published news and gallery entries, plus the portal voting-open setting, through `GET /api/content/public`. Draft images are not served publicly. Image uploads are limited to JPEG, PNG and WebP files up to 5 MB.
 
-Staff sessions use an HttpOnly, SameSite=Strict cookie and expire after eight hours; sessions are lost when the process restarts. The dashboard does not read resident reports or submissions. Polls created here remain drafts because publishing usable polls requires a compatible database record and the existing `cast_vote` function. This local workspace does not add staff accounts, roles, production audit controls, or database migrations.
+Staff sessions use an HttpOnly, SameSite=Strict cookie and expire after eight hours; sessions are lost when the process restarts. Authenticated staff can review the newest encrypted resident reports and submissions; public APIs remain insert-only and cannot read them. Poll drafts still require a compatible database record and the existing `cast_vote` function before they can be published. This local workspace does not add staff accounts, roles, production audit controls, or database migrations.
 
 Run the backend tests with:
 
@@ -34,9 +34,9 @@ npm --prefix backend test
 ## API
 
 - `GET /api/health` reports whether encrypted submissions and online voting are configured.
-- `GET /api/content/public` returns published news and gallery entries only.
+- `GET /api/content/public` returns published news/gallery entries and the portal poll-open setting.
 - `GET|POST|DELETE /api/admin/session` checks, creates and ends the local staff session. Sign-in requires the configured username and `ADMIN_PASSWORD`.
-- Authenticated staff routes: `GET /api/admin/overview`, `GET|POST /api/admin/content/{news,gallery,polls}`, `PUT|DELETE /api/admin/content/{news,gallery,polls}/{id}`, and `POST /api/admin/uploads`.
+- Authenticated staff routes: `GET /api/admin/overview`, `GET|POST /api/admin/content/{news,gallery,polls}`, `PUT|DELETE /api/admin/content/{news,gallery,polls}/{id}`, `GET|PUT /api/admin/settings`, `GET /api/admin/submissions?kind=reports|submissions&limit=50`, and `POST /api/admin/uploads`. Submission review is read-only and returns at most 100 records per request.
 - `GET /api/media/{filename}` serves uploaded images only after they are attached to published news/gallery content (or to an authenticated staff session).
 - `POST /api/submissions` accepts issue, feedback, service and proposal submissions, encrypts them with AES-256-GCM at rest, and returns a reference. Anonymous submissions discard phone numbers. This endpoint is insert-only; submission records and references cannot be read back through a public API.
 - `POST /api/votes` forwards `{ "pollId": "...", "optionId": "..." }` to the Supabase `cast_vote` function.
@@ -44,4 +44,4 @@ npm --prefix backend test
 
 Configure the USSD provider's webhook URL as `https://<your-domain>/api/ussd` after deploying behind HTTPS. The backend currently binds to loopback for local development, and no USSD provider or short code is configured by this repository. Before making the endpoint internet-facing, add the provider's request signature or IP allow-list and deploy with production-grade secret management.
 
-The report flow works end to end. The service-directory and project-update menu options give informational replies; live directory lookup and public project-status lookup are not implemented. Requests are size-limited and rate-limited. Whistleblowing submissions are deliberately not accepted by this service: the prototype has no restricted staff access, agency arrangement or production-grade retention and incident controls. Public status lookup and staff review also require a separately approved data-access design before deployment.
+The report flow works end to end. The service-directory and project-update menu options give informational replies; live directory lookup and public project-status lookup are not implemented. Requests are size-limited and rate-limited. Whistleblowing submissions are deliberately not accepted by this service: it has no agency arrangement or production-grade retention and incident controls. Do not expose this local backend to the internet or use it for production sensitive-report handling.
